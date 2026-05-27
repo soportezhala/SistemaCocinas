@@ -4,59 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pedido cliente</title>
-
-  <!-- ===== ADAPTADOR google.script.run -> fetch (DEBE IR ANTES DE CUALQUIER USO) ===== -->
-  <script>
-  /**
-   * Permite que panel_cliente.html funcione fuera de Apps Script
-   * usando fetch() contra el Web App
-   */
-  (function () {
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwOh48dsgpGVhCUbs4250L7dMHbbAvvv1-rdLWHq9pK5xiMfhQmS1HaRR2t2BZ0xblfOg/exec";
-
-    if (window.google && window.google.script && window.google.script.run) {
-      return; // Apps Script real
-    }
-
-    window.google = {
-      script: {
-        run: {
-          _successHandler: null,
-          _failureHandler: null,
-
-          withSuccessHandler(fn) { this._successHandler = fn; return this; },
-          withFailureHandler(fn) { this._failureHandler = fn; return this; },
-
-          obtenerDatosCliente(dia) {
-            callApi({ action: "obtenerCatalogoCliente", dia }, this);
-          },
-
-          crearCarritoCliente(cliente, dia, items) {
-            callApi({ action: "crearPedidoCliente", cliente, dia, items }, this);
-          }
-        }
-      }
-    };
-
-    function callApi(payload, ctx) {
-      fetch(WEB_APP_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload)
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (!data.exito) throw new Error(data.message || "Error API");
-        ctx._successHandler && ctx._successHandler(data);
-      })
-      .catch(err => {
-        console.error("API error:", err);
-        ctx._failureHandler && ctx._failureHandler(err);
-      });
-    }
-  })();
-  </script>
-
   <style>
     :root {
       --ink: #14313f;
@@ -70,9 +17,6 @@
       --soft: #f7efe5;
       --danger: #b84434;
       --ok: #2f8057;
-
-      --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      --font-display: Georgia, "Times New Roman", serif;
     }
 
     * { box-sizing: border-box; }
@@ -84,15 +28,18 @@
       background:
         radial-gradient(circle at 15% 10%, rgba(242,188,69,.22), transparent 30%),
         linear-gradient(135deg, #fffaf3 0%, #f3e7d7 100%);
-      font-family: var(--font-ui);
+      font-family: Georgia, "Times New Roman", serif;
     }
 
-    h1, h2 { font-family: var(--font-display); }
-    h3, h4 { font-family: var(--font-ui); font-weight: 600; }
+    button, input, select {
+      font: inherit;
+    }
 
-    button, input, select { font: inherit; }
-
-    .page { max-width: 1380px; margin: 0 auto; padding: 24px; }
+    .page {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 24px;
+    }
 
     .panel {
       background: rgba(255,255,255,.9);
@@ -102,11 +49,103 @@
       padding: 22px;
     }
 
-    h1 { margin-bottom: 8px; font-size: clamp(2rem, 5vw, 4rem); line-height: .98; letter-spacing: -.04em; }
-    h2 { font-size: 1.4rem; margin-bottom: 8px; }
-    h3 { font-size: 1rem; margin-bottom: 10px; }
+    h1, h2, h3, h4, p {
+      margin-top: 0;
+    }
 
-    .muted { color: var(--muted); line-height: 1.45; }
+    h1 {
+      margin-bottom: 8px;
+      font-size: clamp(2rem, 5vw, 4rem);
+      line-height: .98;
+      letter-spacing: -.04em;
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+
+    .muted {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .quick-steps {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .quick-steps span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: #fffdfa;
+      border-radius: 999px;
+      padding: 8px 11px;
+      color: #725a45;
+      font-size: .92rem;
+    }
+
+    .hero-panel {
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(280px, 360px);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .hero-copy {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .identity-card {
+      border: 1px solid var(--line);
+      background: #fffdfa;
+      border-radius: 20px;
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .field label {
+      display: block;
+      color: var(--muted);
+      font-size: .86rem;
+      margin-bottom: 5px;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      border: 1px solid #d7c8b8;
+      border-radius: 14px;
+      background: #fff;
+      color: var(--ink);
+      min-height: 44px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(8,116,134,.14);
+    }
 
     .workspace {
       display: grid;
@@ -131,6 +170,18 @@
       align-items: start;
     }
 
+    .products-grid > .panel {
+      height: 100%;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
     .badge {
       display: inline-flex;
       align-items: center;
@@ -140,12 +191,57 @@
       padding: 6px 10px;
       font-size: .82rem;
       color: #725a45;
+      white-space: nowrap;
+    }
+
+    .product-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .product-card {
+      border: 1px solid var(--line);
+      background: #fffdfa;
+      border-radius: 18px;
+      padding: 14px;
+    }
+
+    .product-card h4 {
+      margin: 0 0 10px 0;
+      font-size: 1rem;
+    }
+
+    .controls-product {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 108px;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .controls-product .field:first-child,
+    .controls-product .btn {
+      grid-column: 1 / -1;
+    }
+
+    .controls-susy,
+    .controls-salsa {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+
+    .controls-susy .field:first-child,
+    .controls-salsa .field:first-child,
+    .controls-susy .btn,
+    .controls-salsa .btn {
+      grid-column: 1 / -1;
     }
 
     .btn {
       border: 0;
       border-radius: 999px;
-      min-height: 44px;
+      min-height: 42px;
       padding: 10px 14px;
       font-weight: 700;
       cursor: pointer;
@@ -154,10 +250,98 @@
       box-shadow: 0 8px 18px rgba(232,115,82,.16);
     }
 
-    .btn.primary { background: var(--teal); box-shadow: 0 8px 18px rgba(8,116,134,.16); }
-    .btn.ghost { color: var(--ink); background: #fff; border: 1px solid #d7c8b8; box-shadow: none; }
+    .btn.primary {
+      background: var(--teal);
+      box-shadow: 0 8px 18px rgba(8,116,134,.16);
+    }
 
-    .cart { position: sticky; top: 12px; display: grid; gap: 12px; }
+    .btn.ghost {
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid #d7c8b8;
+      box-shadow: none;
+    }
+
+    .btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .cart {
+      position: sticky;
+      top: 12px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .cart-items {
+      display: grid;
+      gap: 8px;
+      max-height: 44vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .cart-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 10px;
+      background: #fffdfa;
+    }
+
+    .cart-row strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .cart-row small {
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .cart-actions {
+      display: grid;
+      gap: 8px;
+      justify-items: end;
+    }
+
+    .remove {
+      border: 0;
+      border-radius: 999px;
+      background: #f6ded6;
+      color: var(--danger);
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+
+    .total-box {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--soft);
+      padding: 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .total-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .total-line.discount {
+      color: var(--ok);
+      font-weight: 700;
+    }
+
+    .total-line.final {
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
 
     .notice {
       display: none;
@@ -167,14 +351,54 @@
       line-height: 1.4;
     }
 
-    .notice.show { display: block; animation: fadeIn .2s ease; }
+    .notice.show { display: block; }
     .notice.error { color: var(--danger); background: #fff1ee; border-color: #efc6bc; }
     .notice.ok { color: var(--ok); background: #eef9f1; border-color: #bedfc8; }
     .notice.tip { color: #7a5c15; background: #fff6d8; border-color: #f3d27a; }
 
-    @keyframes fadeIn { from { opacity:0; transform: translateY(4px);} to {opacity:1; transform:none;} }
+    .helper-text {
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.35;
+      margin-top: 6px;
+    }
 
-    @media (max-width:1180px) {
+    .notice-content {
+      display: grid;
+      gap: 10px;
+    }
+
+    .notice-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .mini-btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-weight: 700;
+      cursor: pointer;
+      background: rgba(8,116,134,.12);
+      color: var(--teal);
+    }
+
+    .mini-btn.alt {
+      background: rgba(232,115,82,.12);
+      color: var(--coral);
+    }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      border: 1px dashed #d7c8b8;
+      border-radius: 16px;
+      padding: 18px;
+      background: #fffdfa;
+    }
+
+    @media (max-width: 1180px) {
       .workspace {
         grid-template-columns: 1fr;
         grid-template-areas:
@@ -183,169 +407,1168 @@
           "cart"
           "products";
       }
-      .cart { position: static; }
+
+      .cart {
+        position: static;
+      }
     }
 
-    @media (max-width:620px) {
-      .cart {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 50;
-        border-radius: 16px 16px 0 0;
-        box-shadow: 0 -10px 30px rgba(0,0,0,.15);
-        max-height: 65vh;
-        overflow: auto;
-      }
-
+    @media (max-width: 900px) {
+      .hero-top,
       .products-grid {
         grid-template-columns: 1fr;
-        padding-bottom: 70vh;
       }
 
-      .btn { min-height: 48px; font-size: 1rem; }
+      .page {
+        padding: 16px;
+      }
+
+      .panel {
+        padding: 18px;
+      }
     }
 
-    :focus-visible {
-      outline: 3px solid rgba(8,116,134,.45);
-      outline-offset: 2px;
+    @media (max-width: 620px) {
+      .page {
+        padding: 10px;
+      }
+
+      h1 {
+        font-size: clamp(2.3rem, 12vw, 3.6rem);
+      }
+
+      .hero-top,
+      .identity-card,
+      .products-grid {
+        gap: 14px;
+      }
+
+      .panel,
+      .product-card {
+        padding: 14px;
+      }
+
+      .cart-items {
+        max-height: none;
+      }
+
+      .controls-product,
+      .controls-susy,
+      .controls-salsa {
+        grid-template-columns: 1fr;
+      }
+
+      .cart-row {
+        grid-template-columns: 1fr;
+      }
+
+      .cart-actions {
+        justify-items: stretch;
+      }
+
+      .remove {
+        width: 100%;
+      }
     }
+    /* === MEJORAS TIPOGRAFÍA === */
+:root {
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: Georgia, "Times New Roman", serif;
+}
+
+body {
+  font-family: var(--font-ui);
+}
+
+h1, h2 {
+  font-family: var(--font-display);
+}
+    /* === RESPONSIVE MÓVIL === */
+@media (max-width: 620px) {
+
+  .cart {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -10px 30px rgba(0,0,0,.15);
+    max-height: 65vh;
+    overflow: auto;
+  }
+
+  .products-grid {
+    padding-bottom: 70vh;
+  }
+
+  .btn {
+    min-height: 48px;
+    font-size: 1rem;
+  }
+}
+    .notice.show {
+  animation: fadeIn .2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
   </style>
+  <script>
+/**
+ * Permite que panel_cliente.html funcione fuera de Apps Script
+ * usando fetch() contra el Web App
+ */
+(function () {
+
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwOh48dsgpGVhCUbs4250L7dMHbbAvvv1-rdLWHq9pK5xiMfhQmS1HaRR2t2BZ0xblfOg/exec";
+
+  if (window.google && window.google.script && window.google.script.run) {
+    return; // Apps Script real
+  }
+
+  window.google = {
+    script: {
+      run: {
+        _successHandler: null,
+        _failureHandler: null,
+
+        withSuccessHandler(fn) {
+          this._successHandler = fn;
+          return this;
+        },
+
+        withFailureHandler(fn) {
+          this._failureHandler = fn;
+          return this;
+        },
+
+        obtenerDatosCliente(dia) {
+          callApi({ action: "obtenerCatalogoCliente", dia }, this);
+        },
+
+        crearCarritoCliente(cliente, dia, items) {
+          callApi({ action: "crearPedidoCliente", cliente, dia, items }, this);
+        }
+      }
+    }
+  };
+
+  function callApi(payload, ctx) {
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.exito) throw new Error(data.message || "Error API");
+      ctx._successHandler && ctx._successHandler(data);
+    })
+    .catch(err => {
+      console.error("API error:", err);
+      ctx._failureHandler && ctx._failureHandler(err);
+    });
+  }
+
+})();
+</script>
+
 </head>
 <body>
-<main class="page">
-  <section class="workspace">
-    <section class="panel hero-panel">
-      <span class="badge">Pedido en línea</span>
-      <h1>Haz tu pedido</h1>
-      <p class="muted">Elige tus productos, revisa tu carrito y envía tu pedido. Te confirmaremos antes de prepararlo.</p>
+  <main class="page">
+    <section class="workspace">
+      <section class="panel hero-panel">
+        <div class="hero-top">
+          <div class="hero-copy">
+            <span class="badge">Pedido en lí­nea</span>
+            <h1>Haz tu pedido</h1>
+            <p class="muted">Elige tus productos, revisa tu carrito y enví­a tu pedido. Te confirmaremos antes de prepararlo.</p>
+            <div class="quick-steps">
+              <span>1. Elige</span>
+              <span>2. Revisa</span>
+              <span>3. Enví­a</span>
+            </div>
+          </div>
+
+          <div class="identity-card">
+            <div class="field">
+              <label for="cliente">Tu nombre</label>
+              <input id="cliente" type="text" autocomplete="name" list="clientesSugeridos" placeholder="Ej. Angelica Hernandez" onblur="sincronizarClienteNombre_()">
+              <datalist id="clientesSugeridos"></datalist>
+              <div class="helper-text">Si tu nombre ya existe, te lo iremos sugiriendo mientras escribes para evitar duplicados.</div>
+            </div>
+            <div class="field">
+              <label for="dia">Dí­a para recibir tu pedido</label>
+              <select id="dia" onchange="onDiaEntregaChange_()">
+                <option value="Lunes">Lunes</option>
+                <option value="Viernes">Viernes</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div id="msg" class="notice workspace-message"></div>
+
+      <aside class="panel cart">
+        <div>
+          <h2>Carrito</h2>
+          <p class="muted">Aquí­ verás lo que agregues. Puedes quitar productos antes de enviar.</p>
+        </div>
+        <div id="menuInfo" class="notice tip"></div>
+        <div id="comboTip" class="notice tip"></div>
+        <div id="promoTip" class="notice ok"></div>
+        <div id="carritoItems" class="cart-items">
+          <div class="empty">Aún no has agregado productos.</div>
+        </div>
+        <div class="total-box">
+          <div id="subtotalRow" class="total-line" style="display:none;"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
+          <div id="descuentoRow" class="total-line discount" style="display:none;"><span>Paquete Familiar 4 Medios</span><span id="descuentoPromo">-$0.00</span></div>
+          <div class="total-line final"><span>Total aproximado</span><span id="total">$0.00</span></div>
+        </div>
+        <button id="btnEnviar" class="btn primary" type="button" onclick="enviarPedido_()">Enviar mi pedido</button>
+        <button class="btn ghost" type="button" onclick="limpiarCarrito_()">Vaciar carrito</button>
+      </aside>
+
+      <section class="products-grid">
+        <div class="panel">
+          <div class="section-title">
+            <div>
+              <h2>Tortillas La Ma</h2>
+              <p class="muted">Tortillas, sopes, huaraches y gorditas.</p>
+            </div>
+            <span class="badge">Antojitos</span>
+          </div>
+          <div id="tlmProductos" class="product-list">
+            <div class="empty">Cargando opciones disponibles...</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-title">
+            <div>
+              <h2>La Cocina de Susy</h2>
+              <p class="muted">Guisados, complementos y salsas disponibles para tu pedido.</p>
+            </div>
+            <span class="badge">Cocina</span>
+          </div>
+
+          <div class="product-card">
+            <h3>Guisados y complementos</h3>
+            <div class="controls-susy">
+              <div class="field">
+                <label for="guisadoNombre">Elige opción</label>
+                <select id="guisadoNombre" onchange="renderGuisadoPresentaciones_()"></select>
+              </div>
+              <div class="field">
+                <label for="guisadoPresentacion">Elige presentación</label>
+                <select id="guisadoPresentacion"></select>
+              </div>
+              <div class="field">
+                <label for="guisadoCantidad">Cantidad</label>
+                <input id="guisadoCantidad" type="number" min="1" step="1" value="1">
+              </div>
+              <button class="btn primary" type="button" onclick="agregarGuisado_()">Agregar</button>
+            </div>
+            <div class="helper-text">No necesitas elegir si es con carne, sin carne o complemento: el sistema lo detecta automáticamente según la opción seleccionada.</div>
+          </div>
+
+          <div class="product-card">
+            <h3>Salsas</h3>
+            <div class="controls-salsa">
+              <div class="field">
+                <label for="salsaNombre">Elige salsa</label>
+                <select id="salsaNombre" onchange="renderSalsaPresentaciones_()"></select>
+              </div>
+              <div class="field">
+                <label for="salsaPresentacion">Elige presentación</label>
+                <select id="salsaPresentacion"></select>
+              </div>
+              <div class="field">
+                <label for="salsaCantidad">Cantidad</label>
+                <input id="salsaCantidad" type="number" min="1" step="1" value="1">
+              </div>
+              <button class="btn primary" type="button" onclick="agregarSalsa_()">Agregar</button>
+            </div>
+          </div>
+        </div>
+      </section>
     </section>
+  </main>
 
-    <div id="msg" class="notice workspace-message"></div>
+  <script>
+    let catalogoCliente = null;
+    let carrito = [];
+    let clientesMap = {};
+    let ventanaPedido = { abierta: true };
 
-    <aside class="panel cart">
-      <h2>Carrito</h2>
-      <p class="muted">Aquí verás lo que agregues. Puedes quitar productos antes de enviar.</p>
-      <div id="menuInfo" class="notice tip"></div>
-      <div id="comboTip" class="notice tip"></div>
-      <div id="promoTip" class="notice ok"></div>
-      <div id="carritoItems" class="muted">Aún no has agregado productos.</div>
-      <button id="btnEnviar" class="btn primary" type="button" onclick="enviarPedido_()">Enviar mi pedido</button>
-      <button class="btn ghost" type="button" onclick="limpiarCarrito_()">Vaciar carrito</button>
-    </aside>
+    const PRODUCTOS_TLM = [
+      { label: "Tortilla", aliases: ["Tortilla"] },
+      { label: "Sope", aliases: ["Sope"] },
+      { label: "Huarache", aliases: ["Huarache"] },
+      { label: "Gorditas", aliases: ["Gorditas", "Gordita"] }
+    ];
 
-    <section class="products-grid">
-      <div class="panel">
-        <h2>Tortillas La Ma</h2>
-        <div id="tlmProductos">Cargando opciones disponibles…</div>
-      </div>
+    cargarCatalogo_();
 
-      <div class="panel">
-        <h2>La Cocina de Susy</h2>
-        <div>
-          <label>Guisado</label>
-          <select id="guisadoNombre"></select>
-        </div>
-        <div>
-          <label>Presentación</label>
-          <select id="guisadoPresentacion"></select>
-        </div>
-        <div>
-          <label>Cantidad</label>
-          <input id="guisadoCantidad" type="number" min="1" step="1" value="1">
-        </div>
-        <button class="btn primary" type="button" onclick="agregarGuisado_()">Agregar</button>
-      </div>
-    </section>
-  </section>
-</main>
-
-<script>
-  let catalogoCliente = null;
-  let carrito = [];
-  let ventanaPedido = { abierta: true };
-
-  cargarCatalogo_();
-
-  function cargarCatalogo_(){
-    google.script.run
-      .withFailureHandler(function(err){
-        mostrarMensaje_("No se pudo cargar el catálogo: " + errorText_(err), "error");
-      })
-      .withSuccessHandler(function(data){
-        catalogoCliente = data || {};
-        ventanaPedido = catalogoCliente.ventanaPedido || { abierta: true };
-        renderMenuInfo_();
-        mostrarMensaje_("", "");
-      })
-      .obtenerDatosCliente("Lunes");
-  }
-
-  function renderMenuInfo_(){
-    const el = document.getElementById("menuInfo");
-    if (!el) return;
-    if (ventanaPedido && ventanaPedido.abierta === false) {
-      el.textContent = ventanaPedido.mensaje || "Por ahora no estamos recibiendo pedidos.";
-      el.className = "notice error show";
-    } else if (ventanaPedido && ventanaPedido.mensaje) {
-      el.textContent = ventanaPedido.mensaje;
-      el.className = "notice tip show";
-    } else {
-      el.textContent = "";
-      el.className = "notice tip";
-    }
-  }
-
-  function agregarGuisado_(){
-    carrito.push({ id: Date.now(), label: "Guisado agregado" });
-    document.getElementById("carritoItems").textContent = "Productos en carrito: " + carrito.length;
-  }
-
-  function limpiarCarrito_(){
-    carrito = [];
-    document.getElementById("carritoItems").textContent = "Aún no has agregado productos.";
-  }
-
-  function enviarPedido_(){
-    const btn = document.getElementById("btnEnviar");
-    if (!carrito.length) return mostrarMensaje_("Agrega al menos un producto al carrito.", "error");
-    btn.disabled = true;
-
-    google.script.run
-      .withFailureHandler(function(err){
-        btn.disabled = false;
-        mostrarMensaje_("No pudimos enviar tu pedido: " + errorText_(err), "error");
-      })
-      .withSuccessHandler(function(res){
-        btn.disabled = false;
+    function onDiaEntregaChange_(){
+      if (carrito.length) {
         carrito = [];
-        limpiarCarrito_();
-        const folio = res && res.folioCarrito ? res.folioCarrito : "";
-        mostrarMensaje_(
-          folio
-            ? "Recibimos tu pedido. Tu folio es " + folio + ". Te confirmaremos en breve."
-            : "Recibimos tu pedido correctamente. Te confirmaremos en breve.",
-          "ok"
-        );
-      })
-      .crearCarritoCliente("Cliente", "Lunes", carrito);
-  }
-
-  function mostrarMensaje_(texto, tipo){
-    const el = document.getElementById("msg");
-    if (!texto) {
-      el.textContent = "";
-      el.className = "notice workspace-message";
-      return;
+        renderCarrito_();
+        mostrarMensaje_("Cambiamos el dí­a de entrega y vaciamos el carrito para mostrarte solo las opciones correctas.", "ok");
+      }
+      cargarCatalogo_();
     }
-    el.textContent = texto;
-    el.className = "notice workspace-message " + (tipo || "ok") + " show";
-  }
 
-  function errorText_(err){
-    return err && err.message ? err.message : String(err || "Error desconocido");
-  }
-</script>
+    function cargarCatalogo_(){
+      const dia = document.getElementById("dia") ? document.getElementById("dia").value : "";
+      google.script.run
+        .withFailureHandler(function(err){
+          mostrarMensaje_("No se pudo cargar el catalogo: " + errorText_(err), "error");
+        })
+        .withSuccessHandler(function(data){
+          catalogoCliente = data || {};
+          ventanaPedido = (catalogoCliente || {}).ventanaPedido || { abierta: true };
+          hydrateClientes_((catalogoCliente || {}).clientes || []);
+          renderMenuInfo_();
+          renderTortillas_();
+          renderGuisadoOptions_();
+          renderSalsaOptions_();
+          updatePedidoAvailabilityUI_();
+          mostrarMensaje_("", "");
+        })
+        .obtenerDatosCliente(dia);
+    }
+
+    function renderMenuInfo_(){
+      const el = document.getElementById("menuInfo");
+      const menu = (catalogoCliente || {}).menu || {};
+      const ventana = (catalogoCliente || {}).ventanaPedido || {};
+      if (!el) return;
+      if (!ventana.abierta) {
+        el.textContent = ventana.mensaje || "Por ahora ya no estamos recibiendo pedidos para este dí­a.";
+        el.className = "notice error show";
+      } else if (menu.configurado) {
+        el.textContent = (ventana.mensaje || ("Mostrando opciones del menu para " + (menu.diaEntrega || "") + ".")) + " (" + (menu.semana || "") + ").";
+        el.className = "notice tip show";
+      } else {
+        el.textContent = (ventana.mensaje || "Mostrando opciones disponibles.") + " El menu especifico de este dia aun no esta cargado.";
+        el.className = "notice tip show";
+      }
+    }
+
+    function updatePedidoAvailabilityUI_(){
+      const abierta = !ventanaPedido || ventanaPedido.abierta !== false;
+      document.querySelectorAll(".btn.primary").forEach(function(btn){
+        btn.disabled = !abierta;
+        if (!abierta) btn.title = "Ya no se reciben pedidos para este dí­a";
+        else btn.removeAttribute("title");
+      });
+      const enviar = document.getElementById("btnEnviar");
+      if (enviar) {
+        enviar.disabled = !abierta;
+        if (!abierta) enviar.title = "Ya no se reciben pedidos para este dí­a";
+        else enviar.removeAttribute("title");
+      }
+    }
+
+    function renderTortillas_(){
+      const target = document.getElementById("tlmProductos");
+      const productos = ((catalogoCliente || {}).tortillas || {}).productos || {};
+      let html = "";
+
+      PRODUCTOS_TLM.forEach(function(def){
+        let producto = "";
+        let items = [];
+        for (let i = 0; i < def.aliases.length; i++) {
+          if (productos[def.aliases[i]] && productos[def.aliases[i]].length) {
+            producto = def.aliases[i];
+            items = productos[def.aliases[i]];
+            break;
+          }
+        }
+        if (!items.length) return;
+        const slug = slug_(def.label);
+        html += "<div class='product-card'>";
+        html += "<h4>" + escapeHtml_(def.label) + "</h4>";
+        html += "<div class='controls-product'>";
+        html += "<div class='field'><label for='pres_" + slug + "'>Elige presentacion</label><select id='pres_" + slug + "'>";
+        items.forEach(function(item){
+          html += "<option value='" + escapeHtml_(item.presentacion) + "' data-precio='" + Number(item.precio || 0) + "'>" + escapeHtml_(item.presentacion) + " - " + money_(item.precio) + "</option>";
+        });
+        html += "</select></div>";
+        html += "<div class='field'><label for='qty_" + slug + "'>Cantidad</label><input id='qty_" + slug + "' type='number' min='1' step='1' value='1'></div>";
+        html += "<button class='btn primary' type='button' onclick=\"agregarTortilla_('" + escapeAttr_(producto) + "','" + escapeAttr_(def.label) + "')\">Agregar</button>";
+        html += "</div>";
+        html += "</div>";
+      });
+
+      target.innerHTML = html || "<div class='empty'>Por ahora no hay opciones disponibles de Tortillas La Ma.</div>";
+    }
+
+    function hydrateClientes_(clientes){
+      const list = document.getElementById("clientesSugeridos");
+      clientesMap = {};
+      if (!list) return;
+      const nombres = Array.isArray(clientes) ? clientes.slice().sort() : [];
+      list.innerHTML = nombres.map(function(nombre){
+        const canon = String(nombre || "").trim();
+        if (!canon) return "";
+        clientesMap[norm_(canon)] = canon;
+        return "<option value='" + escapeAttr_(canon) + "'></option>";
+      }).join("");
+    }
+
+    function sincronizarClienteNombre_(){
+      const input = document.getElementById("cliente");
+      if (!input) return "";
+      const raw = String(input.value || "").trim();
+      if (!raw) return "";
+      const canon = clientesMap[norm_(raw)] || raw;
+      input.value = canon;
+      return canon;
+    }
+
+    function renderGuisadoOptions_(){
+      const select = document.getElementById("guisadoNombre");
+      const grupos = (((catalogoCliente || {}).guisados || {}).porGrupo) || {};
+      select.innerHTML = "";
+      const orden = ["Con carne", "Sin carne", "Complemento"];
+      let totalOpciones = 0;
+
+      orden.forEach(function(grupo){
+        const lista = grupos[grupo] || [];
+        if (!lista.length) return;
+        const optgroup = document.createElement("optgroup");
+        optgroup.label = grupo;
+        lista.forEach(function(item){
+          const opt = document.createElement("option");
+          opt.value = item.nombre;
+          opt.textContent = item.nombre + (grupo === "Complemento" ? " (Complemento)" : (item.premium ? " (Premium)" : ""));
+          opt.dataset.tipo = item.tipo || grupo;
+          opt.dataset.grupo = grupo;
+          optgroup.appendChild(opt);
+          totalOpciones++;
+        });
+        select.appendChild(optgroup);
+      });
+
+      if (!totalOpciones) {
+        select.innerHTML = "<option value=''>Sin opciones disponibles</option>";
+        renderGuisadoPresentaciones_();
+        return;
+      }
+      renderGuisadoPresentaciones_();
+    }
+
+    function renderGuisadoPresentaciones_(){
+      const nombre = document.getElementById("guisadoNombre").value || "";
+      const select = document.getElementById("guisadoPresentacion");
+      const grupos = ((((catalogoCliente || {}).guisados || {}).porGrupo) || {});
+      const todas = []
+        .concat(grupos["Con carne"] || [])
+        .concat(grupos["Sin carne"] || [])
+        .concat(grupos["Complemento"] || []);
+      const item = todas.find(function(row){ return row.nombre === nombre; });
+      const presentaciones = item && Array.isArray(item.presentaciones) ? item.presentaciones : [];
+      select.innerHTML = "";
+
+      if (!presentaciones.length) {
+        select.innerHTML = "<option value=''>Sin presentaciones por ahora</option>";
+        return;
+      }
+
+      presentaciones.forEach(function(pres){
+        const opt = document.createElement("option");
+        opt.value = pres.presentacion;
+        opt.textContent = pres.presentacion + " - " + money_(pres.precio);
+        opt.dataset.precio = Number(pres.precio || 0);
+        select.appendChild(opt);
+      });
+    }
+
+    function renderSalsaOptions_(){
+      const select = document.getElementById("salsaNombre");
+      const items = (((catalogoCliente || {}).salsas || {}).items) || {};
+      const nombres = Object.keys(items).sort();
+      select.innerHTML = "";
+
+      if (!nombres.length) {
+        select.innerHTML = "<option value=''>Sin salsas disponibles</option>";
+        renderSalsaPresentaciones_();
+        return;
+      }
+
+      nombres.forEach(function(nombre){
+        const opt = document.createElement("option");
+        opt.value = nombre;
+        opt.textContent = nombre;
+        opt.dataset.tipo = items[nombre].tipo || "";
+        select.appendChild(opt);
+      });
+      renderSalsaPresentaciones_();
+    }
+
+    function renderSalsaPresentaciones_(){
+      const nombre = document.getElementById("salsaNombre").value || "";
+      const select = document.getElementById("salsaPresentacion");
+      const item = ((((catalogoCliente || {}).salsas || {}).items) || {})[nombre];
+      const presentaciones = item && Array.isArray(item.presentaciones) ? item.presentaciones : [];
+      select.innerHTML = "";
+
+      if (!presentaciones.length) {
+        select.innerHTML = "<option value=''>Sin presentaciones por ahora</option>";
+        return;
+      }
+
+      presentaciones.forEach(function(pres){
+        const opt = document.createElement("option");
+        opt.value = pres.presentacion;
+        opt.textContent = pres.presentacion + " - " + money_(pres.precio);
+        opt.dataset.precio = Number(pres.precio || 0);
+        select.appendChild(opt);
+      });
+    }
+
+    function agregarTortilla_(producto, label){
+      const visible = label || producto;
+      const slug = slug_(visible);
+      const pres = document.getElementById("pres_" + slug);
+      const qty = document.getElementById("qty_" + slug);
+      const presentacion = pres ? pres.value : "";
+      const cantidad = Number(qty ? qty.value : 0);
+      const precio = pres && pres.selectedOptions.length ? Number(pres.selectedOptions[0].dataset.precio || 0) : 0;
+      if (!presentacion || cantidad < 1) return mostrarMensaje_("Elige una presentación y una cantidad válida.", "error");
+
+      carrito.push({
+        id: uid_(),
+        cocina: "Tortillas La Ma",
+        producto: producto,
+        receta: "",
+        tipo: "",
+        presentacion: presentacion,
+        cantidad: cantidad,
+        precio: precio,
+        label: visible + " - " + presentacion
+      });
+      qty.value = 1;
+      renderCarrito_();
+    }
+
+    function agregarGuisado_(){
+      const guisadoSelect = document.getElementById("guisadoNombre");
+      const presSelect = document.getElementById("guisadoPresentacion");
+      const cantidad = Number(document.getElementById("guisadoCantidad").value || 0);
+      const receta = guisadoSelect.value || "";
+      const tipo = guisadoSelect.selectedOptions.length ? (guisadoSelect.selectedOptions[0].dataset.tipo || "") : "";
+      const presentacion = presSelect.value || "";
+      const precio = presSelect.selectedOptions.length ? Number(presSelect.selectedOptions[0].dataset.precio || 0) : 0;
+      if (!receta || !presentacion || cantidad < 1) return mostrarMensaje_("Elige guisado, presentación y cantidad válida.", "error");
+      const etiquetaBase = norm_(tipo) === "complemento" ? "Complemento" : "Guisado";
+
+      carrito.push({
+        id: uid_(),
+        cocina: "La Cocina de Susy",
+        producto: "Guisado",
+        receta: receta,
+        tipo: tipo,
+        presentacion: presentacion,
+        cantidad: cantidad,
+        precio: precio,
+        label: etiquetaBase + " - " + receta
+      });
+      document.getElementById("guisadoCantidad").value = 1;
+      renderCarrito_();
+    }
+
+    function agregarSalsa_(){
+      const salsaSelect = document.getElementById("salsaNombre");
+      const presSelect = document.getElementById("salsaPresentacion");
+      const cantidad = Number(document.getElementById("salsaCantidad").value || 0);
+      const receta = salsaSelect.value || "";
+      const tipo = salsaSelect.selectedOptions.length ? (salsaSelect.selectedOptions[0].dataset.tipo || "") : "";
+      const presentacion = presSelect.value || "";
+      const precio = presSelect.selectedOptions.length ? Number(presSelect.selectedOptions[0].dataset.precio || 0) : 0;
+      if (!receta || !presentacion || cantidad < 1) return mostrarMensaje_("Elige salsa, presentación y cantidad válida.", "error");
+
+      carrito.push({
+        id: uid_(),
+        cocina: "La Cocina de Susy",
+        producto: "Salsa",
+        receta: receta,
+        tipo: tipo,
+        presentacion: presentacion,
+        cantidad: cantidad,
+        precio: precio,
+        label: "Salsa - " + receta
+      });
+      document.getElementById("salsaCantidad").value = 1;
+      renderCarrito_();
+    }
+
+    function renderCarrito_(){
+      const target = document.getElementById("carritoItems");
+      const combo = detectarComboSugerido_();
+      const promo = detectarPaqueteFamiliar_();
+      let total = 0;
+      mostrarComboTip_(combo);
+      mostrarPromoTip_(promo);
+
+      if (!carrito.length) {
+        target.innerHTML = "<div class='empty'>Aun no has agregado productos.</div>";
+        setCarritoTotales_(0, 0);
+        document.getElementById("total").textContent = money_(0);
+        return;
+      }
+
+      target.innerHTML = carrito.map(function(item, idx){
+        const subtotal = Number(item.precio || 0) * Number(item.cantidad || 0);
+        total += subtotal;
+        const detalle = [
+          item.cocina,
+          item.tipo,
+          item.producto === "Combo" ? (item.comboGuisado ? ("Guisado: " + item.comboGuisado) : "") : "",
+          item.producto === "Combo" ? (item.comboSalsa ? ("Salsa: " + item.comboSalsa) : "") : "",
+          item.presentacion,
+          "Cantidad: " + item.cantidad
+        ].filter(Boolean).join(" | ");
+        const botonQuitar = item.producto === "Combo"
+          ? "<button class='remove' type='button' onclick='deshacerCombo_(" + idx + ")'>Deshacer combo</button>"
+          : "<button class='remove' type='button' onclick='eliminarItem_(" + idx + ")'>Quitar</button>";
+        return ""
+          + "<div class='cart-row'>"
+          + "<div><strong>" + escapeHtml_(item.label) + "</strong><small>" + escapeHtml_(detalle) + "</small></div>"
+          + "<div class='cart-actions'><strong>" + money_(subtotal) + "</strong>" + botonQuitar + "</div>"
+          + "</div>";
+      }).join("");
+      setCarritoTotales_(total, promo && promo.aplica ? promo.descuentoTotal : 0);
+      mostrarMensaje_("", "");
+    }
+
+    function setCarritoTotales_(subtotal, descuento){
+      const subtotalRow = document.getElementById("subtotalRow");
+      const descuentoRow = document.getElementById("descuentoRow");
+      const subtotalEl = document.getElementById("subtotal");
+      const descuentoEl = document.getElementById("descuentoPromo");
+      const totalEl = document.getElementById("total");
+      const gross = Number(subtotal || 0);
+      const discount = Math.max(0, Number(descuento || 0));
+      const totalFinal = Math.max(0, round_(gross - discount, 2));
+      if (discount > 0) {
+        subtotalRow.style.display = "";
+        descuentoRow.style.display = "";
+        subtotalEl.textContent = money_(gross);
+        descuentoEl.textContent = "-" + money_(discount);
+      } else {
+        subtotalRow.style.display = "none";
+        descuentoRow.style.display = "none";
+        subtotalEl.textContent = money_(0);
+        descuentoEl.textContent = "-" + money_(0);
+      }
+      totalEl.textContent = money_(totalFinal);
+    }
+
+    function classifyPaqueteTipo_(tipo){
+      const key = norm_(tipo);
+      if (key.indexOf("premium") >= 0) return "premium";
+      if (key.indexOf("sin carne") >= 0) return "sin_carne";
+      return "con_carne";
+    }
+
+    function takePaqueteFillerUnit_(pools){
+      return (pools.sin_carne && pools.sin_carne.shift())
+        || (pools.con_carne && pools.con_carne.shift())
+        || (pools.premium && pools.premium.shift())
+        || null;
+    }
+
+    function detectarPaqueteFamiliar_(){
+      const units = [];
+      carrito.forEach(function(item, idx){
+        if (item.producto !== "Guisado") return;
+        if (norm_(item.presentacion) !== "1/2 litro") return;
+        if (norm_(item.tipo).indexOf("complemento") >= 0) return;
+        const qty = Math.max(0, Number(item.cantidad || 0));
+        for (let unit = 0; unit < qty; unit++) {
+          units.push({
+            itemIdx: idx,
+            receta: item.receta || item.label || "Guisado",
+            tipo: item.tipo || "",
+            grupo: classifyPaqueteTipo_(item.tipo || "")
+          });
+        }
+      });
+
+      const blocksCount = Math.floor(units.length / 4);
+      if (blocksCount < 1) return null;
+
+      const pools = { premium: [], con_carne: [], sin_carne: [] };
+      units.forEach(function(unit){ pools[unit.grupo].push(unit); });
+      const blocks = [];
+      const premiumBlocks = Math.min(blocksCount, pools.premium.length);
+      for (let i = 0; i < premiumBlocks; i++) {
+        blocks.push({ kind: "premium", discount: 25, units: [pools.premium.shift()] });
+      }
+      while (blocks.length < blocksCount && pools.con_carne.length) {
+        blocks.push({ kind: "mixto", discount: 20, units: [pools.con_carne.shift()] });
+      }
+      while (blocks.length < blocksCount) {
+        blocks.push({ kind: "sin_carne", discount: 15, units: [] });
+      }
+      blocks.forEach(function(block){
+        while (block.units.length < 4) {
+          const nextUnit = takePaqueteFillerUnit_(pools);
+          if (!nextUnit) break;
+          block.units.push(nextUnit);
+        }
+      });
+
+      const labels = { premium: "con premium", mixto: "mixto/con carne", sin_carne: "sin carne" };
+      const counts = { premium: 0, mixto: 0, sin_carne: 0 };
+      let descuentoTotal = 0;
+      blocks.forEach(function(block){
+        descuentoTotal += Number(block.discount || 0);
+        counts[block.kind] = (counts[block.kind] || 0) + 1;
+      });
+      const breakdown = [];
+      ["premium", "mixto", "sin_carne"].forEach(function(kind){
+        const qty = Number(counts[kind] || 0);
+        if (qty > 0) breakdown.push(qty + " " + labels[kind]);
+      });
+      const subtotal = carrito.reduce(function(acc, item){
+        return acc + (Number(item.precio || 0) * Number(item.cantidad || 0));
+      }, 0);
+      return {
+        aplica: descuentoTotal > 0,
+        nombrePromo: "Paquete Familiar 4 Medios",
+        bloquesTotal: blocks.length,
+        descuentoTotal: round_(descuentoTotal, 2),
+        breakdown: breakdown,
+        subtotal: round_(subtotal, 2),
+        totalFinal: round_(subtotal - descuentoTotal, 2)
+      };
+    }
+
+    function mostrarPromoTip_(promo){
+      const el = document.getElementById("promoTip");
+      if (!promo || !promo.aplica) {
+        el.className = "notice ok";
+        el.textContent = "";
+        return;
+      }
+      const extra = promo.breakdown && promo.breakdown.length ? ("<div><strong>Aplica en:</strong> " + escapeHtml_(promo.breakdown.join(" | ")) + "</div>") : "";
+      el.innerHTML = ""
+        + "<div class='notice-content'>"
+        + "<div><strong>" + escapeHtml_(promo.nombrePromo) + " aplicado.</strong><br>"
+        + "Detectamos " + Number(promo.bloquesTotal || 0) + " bloque(s) de 4 medios para ayudarte a ahorrar.</div>"
+        + extra
+        + "<div><strong>Descuento total:</strong> " + money_(promo.descuentoTotal) + " &nbsp; <strong>Total con promo:</strong> " + money_(promo.totalFinal) + "</div>"
+        + "</div>";
+      el.className = "notice ok show";
+    }
+
+    function buildComboCandidateForGuisado_(guisadoItem){
+      const activos = (catalogoCliente && Array.isArray(catalogoCliente.combosActivos)) ? catalogoCliente.combosActivos : [];
+      const tipo = norm_(guisadoItem && guisadoItem.tipo || "");
+      const presentacion = norm_(guisadoItem && guisadoItem.presentacion || "");
+      if (presentacion !== "1/2 litro") return null;
+      const candidatos = [];
+      if (tipo.indexOf("premium") >= 0) {
+        if (tipo.indexOf("sin carne") >= 0) {
+          candidatos.push("premium sin carne", "premium");
+        } else if (tipo.indexOf("con carne") >= 0) {
+          candidatos.push("premium con carne", "premium");
+        } else {
+          candidatos.push("premium");
+        }
+      } else if (tipo.indexOf("sin carne") >= 0) {
+        candidatos.push("casero sin carne");
+      } else {
+        candidatos.push("casero con carne");
+      }
+
+      for (let i = 0; i < candidatos.length; i++) {
+        const key = candidatos[i];
+        const match = activos.find(function(nombre){
+          return norm_(nombre).indexOf(key) >= 0;
+        });
+        if (match) {
+          const precio = resolveComboPrecio_(match);
+          if (precio > 0) {
+            return {
+              comboName: match,
+              comboPrecio: precio
+            };
+          }
+        }
+      }
+      return null;
+    }
+
+    function resolveComboPrecio_(comboName){
+      const precios = ((catalogoCliente || {}).precios || {});
+      if (precios.Combo && Object.prototype.hasOwnProperty.call(precios.Combo, comboName)) {
+        return Number(precios.Combo[comboName] || 0);
+      }
+      return 0;
+    }
+
+    function detectarComboSugerido_(){
+      const guisadoUnits = [];
+      const salsaUnits = [];
+      const tortillaUnits = [];
+
+      carrito.forEach(function(item, idx){
+        if (item.producto === "Combo") return;
+        const qty = Math.max(0, Number(item.cantidad || 0));
+        for (let unit = 0; unit < qty; unit++) {
+          if (item.producto === "Guisado" && norm_(item.tipo) !== "complemento") {
+            const comboData = buildComboCandidateForGuisado_(item);
+            if (comboData) {
+              guisadoUnits.push({
+                itemIdx: idx,
+                receta: item.receta,
+                tipo: item.tipo || "",
+                presentacion: item.presentacion,
+                precio: Number(item.precio || 0),
+                comboName: comboData.comboName,
+                comboPrecio: comboData.comboPrecio,
+                contribucion: Number(item.precio || 0) - comboData.comboPrecio
+              });
+            }
+          } else if (item.producto === "Salsa" && norm_(item.presentacion) === "vaso 10oz") {
+            salsaUnits.push({
+              itemIdx: idx,
+              receta: item.receta,
+              presentacion: item.presentacion,
+              precio: Number(item.precio || 0)
+            });
+          } else if (item.producto === "Tortilla" && norm_(item.presentacion) === "1/2 kilo") {
+            tortillaUnits.push({
+              itemIdx: idx,
+              presentacion: item.presentacion,
+              precio: Number(item.precio || 0)
+            });
+          }
+        }
+      });
+
+      if (!guisadoUnits.length || !salsaUnits.length || !tortillaUnits.length) return null;
+
+      guisadoUnits.sort(function(a,b){ return Number(b.contribucion || 0) - Number(a.contribucion || 0); });
+      salsaUnits.sort(function(a,b){ return Number(b.precio || 0) - Number(a.precio || 0); });
+      tortillaUnits.sort(function(a,b){ return Number(b.precio || 0) - Number(a.precio || 0); });
+
+      const maxCombos = Math.min(guisadoUnits.length, salsaUnits.length, tortillaUnits.length);
+      let best = null;
+      let sumG = 0, sumS = 0, sumT = 0;
+
+      for (let k = 1; k <= maxCombos; k++) {
+        sumG += Number(guisadoUnits[k - 1].contribucion || 0);
+        sumS += Number(salsaUnits[k - 1].precio || 0);
+        sumT += Number(tortillaUnits[k - 1].precio || 0);
+        const ahorro = round_(sumG + sumS + sumT, 2);
+        if (ahorro <= 0) continue;
+        if (!best || ahorro > best.ahorro) {
+          best = { k: k, ahorro: ahorro };
+        }
+      }
+
+      if (!best || !best.k) return null;
+
+      const combos = [];
+      let totalSeparadoComponentes = 0;
+      let totalCombo = 0;
+
+      for (let i = 0; i < best.k; i++) {
+        const guisado = guisadoUnits[i];
+        const salsa = salsaUnits[i];
+        const tortilla = tortillaUnits[i];
+        totalSeparadoComponentes += Number(guisado.precio || 0) + Number(salsa.precio || 0) + Number(tortilla.precio || 0);
+        totalCombo += Number(guisado.comboPrecio || 0);
+        combos.push({
+          comboName: guisado.comboName,
+          comboPrecio: Number(guisado.comboPrecio || 0),
+          guisadoReceta: guisado.receta,
+          guisadoTipo: guisado.tipo,
+          guisadoPresentacion: guisado.presentacion,
+          guisadoItemIdx: guisado.itemIdx,
+          salsaReceta: salsa.receta,
+          salsaPresentacion: salsa.presentacion,
+          salsaItemIdx: salsa.itemIdx,
+          tortillaPresentacion: tortilla.presentacion,
+          tortillaItemIdx: tortilla.itemIdx
+        });
+      }
+
+      const totalCarritoActual = carrito.reduce(function(acc, item){
+        return acc + (Number(item.precio || 0) * Number(item.cantidad || 0));
+      }, 0);
+
+      return {
+        combos: combos,
+        ahorro: round_(best.ahorro, 2),
+        totalSeparadoComponentes: round_(totalSeparadoComponentes, 2),
+        totalCombo: round_(totalCombo, 2),
+        totalCarritoActual: round_(totalCarritoActual, 2),
+        totalCarritoOptimizado: round_(totalCarritoActual - best.ahorro, 2)
+      };
+    }
+
+    function mostrarComboTip_(comboPlan){
+      const el = document.getElementById("comboTip");
+      if (!comboPlan || !Array.isArray(comboPlan.combos) || !comboPlan.combos.length) {
+        el.className = "notice tip";
+        el.textContent = "";
+        return;
+      }
+      const lista = comboPlan.combos.map(function(item){
+        return item.comboName + " (" + item.guisadoReceta + " + " + item.salsaReceta + ")";
+      }).join(", ");
+      const html = ""
+        + "<div class='notice-content'>"
+        + "<div><strong>Tu pedido puede convertirse en combo.</strong><br>"
+        + "Detectamos la mejor combinación para ti: " + escapeHtml_(lista) + ".</div>"
+        + "<div><strong>Componentes sueltos:</strong> " + money_(comboPlan.totalSeparadoComponentes) + " &nbsp; <strong>En combo(s):</strong> " + money_(comboPlan.totalCombo) + "</div>"
+        + "<div><strong>Ahorro estimado:</strong> " + money_(comboPlan.ahorro) + " &nbsp; <strong>Total optimizado del carrito:</strong> " + money_(comboPlan.totalCarritoOptimizado) + "</div>"
+        + "<div class='notice-actions'><button class='mini-btn' type='button' onclick='convertirComboSugerido_()'>Aplicar mejor combinación</button><button class='mini-btn alt' type='button' onclick='ocultarComboTip_()'>Mantener por separado</button></div>"
+        + "</div>";
+      el.innerHTML = html;
+      el.className = "notice tip show";
+    }
+
+    function ocultarComboTip_(){
+      const el = document.getElementById("comboTip");
+      if (!el) return;
+      el.className = "notice tip";
+      el.textContent = "";
+    }
+
+    function ajustarCantidadItem_(idx, delta){
+      const item = carrito[idx];
+      if (!item) return;
+      const nueva = Number(item.cantidad || 0) + delta;
+      if (nueva > 0) {
+        item.cantidad = nueva;
+      } else {
+        carrito.splice(idx, 1);
+      }
+    }
+
+    function getCatalogPriceForItem_(producto, receta, tipo, presentacion){
+      if (producto === "Guisado") {
+        const grupos = (((catalogoCliente || {}).guisados || {}).porGrupo) || {};
+        const todas = []
+          .concat(grupos["Con carne"] || [])
+          .concat(grupos["Sin carne"] || [])
+          .concat(grupos["Complemento"] || []);
+        const item = todas.find(function(row){ return row.nombre === receta; });
+        const pres = item && Array.isArray(item.presentaciones)
+          ? item.presentaciones.find(function(row){ return row.presentacion === presentacion; })
+          : null;
+        return Number(pres && pres.precio || 0);
+      }
+      if (producto === "Salsa") {
+        const item = ((((catalogoCliente || {}).salsas || {}).items) || {})[receta];
+        const pres = item && Array.isArray(item.presentaciones)
+          ? item.presentaciones.find(function(row){ return row.presentacion === presentacion; })
+          : null;
+        return Number(pres && pres.precio || 0);
+      }
+      const productos = (((catalogoCliente || {}).tortillas || {}).productos) || {};
+      const lista = productos[producto] || productos[(producto === "Gordita" ? "Gorditas" : producto)] || [];
+      const pres = Array.isArray(lista) ? lista.find(function(row){ return row.presentacion === presentacion; }) : null;
+      return Number(pres && pres.precio || 0);
+    }
+
+    function convertirComboSugerido_(){
+      const comboPlan = detectarComboSugerido_();
+      if (!comboPlan || !comboPlan.combos || !comboPlan.combos.length) return;
+
+      const decrements = {};
+      comboPlan.combos.forEach(function(combo){
+        decrements[combo.guisadoItemIdx] = (decrements[combo.guisadoItemIdx] || 0) - 1;
+        decrements[combo.salsaItemIdx] = (decrements[combo.salsaItemIdx] || 0) - 1;
+        decrements[combo.tortillaItemIdx] = (decrements[combo.tortillaItemIdx] || 0) - 1;
+      });
+      Object.keys(decrements).map(function(key){ return Number(key); }).sort(function(a,b){ return b-a; }).forEach(function(idx){
+        ajustarCantidadItem_(idx, decrements[idx]);
+      });
+
+      comboPlan.combos.forEach(function(combo){
+        carrito.push({
+          id: uid_(),
+          cocina: "La Cocina de Susy",
+          producto: "Combo",
+          receta: combo.comboName,
+          tipo: "",
+          presentacion: combo.comboName,
+          cantidad: 1,
+          precio: combo.comboPrecio,
+          label: "Combo - " + combo.comboName,
+          comboGuisado: combo.guisadoReceta,
+          comboSalsa: combo.salsaReceta,
+          comboTortillas: "",
+          comboOrigen: {
+            guisadoTipo: combo.guisadoTipo || "",
+            guisadoPresentacion: combo.guisadoPresentacion || "1/2 litro",
+            salsaPresentacion: combo.salsaPresentacion || "Vaso 10oz",
+            tortillaPresentacion: combo.tortillaPresentacion || "1/2 kilo"
+          }
+        });
+      });
+      renderCarrito_();
+    }
+
+    function deshacerCombo_(idx){
+      const item = carrito[idx];
+      if (!item || item.producto !== "Combo") return;
+      carrito.splice(idx, 1);
+      if (item.comboGuisado) {
+        carrito.push({
+          id: uid_(),
+          cocina: "La Cocina de Susy",
+          producto: "Guisado",
+          receta: item.comboGuisado,
+          tipo: item.comboOrigen && item.comboOrigen.guisadoTipo ? item.comboOrigen.guisadoTipo : "",
+          presentacion: item.comboOrigen && item.comboOrigen.guisadoPresentacion ? item.comboOrigen.guisadoPresentacion : "1/2 litro",
+          cantidad: 1,
+          precio: getCatalogPriceForItem_("Guisado", item.comboGuisado, item.comboOrigen && item.comboOrigen.guisadoTipo ? item.comboOrigen.guisadoTipo : "", item.comboOrigen && item.comboOrigen.guisadoPresentacion ? item.comboOrigen.guisadoPresentacion : "1/2 litro"),
+          label: "Guisado - " + item.comboGuisado
+        });
+      }
+      if (item.comboSalsa) {
+        carrito.push({
+          id: uid_(),
+          cocina: "La Cocina de Susy",
+          producto: "Salsa",
+          receta: item.comboSalsa,
+          tipo: "",
+          presentacion: item.comboOrigen && item.comboOrigen.salsaPresentacion ? item.comboOrigen.salsaPresentacion : "Vaso 10oz",
+          cantidad: 1,
+          precio: getCatalogPriceForItem_("Salsa", item.comboSalsa, "", item.comboOrigen && item.comboOrigen.salsaPresentacion ? item.comboOrigen.salsaPresentacion : "Vaso 10oz"),
+          label: "Salsa - " + item.comboSalsa
+        });
+      }
+      carrito.push({
+        id: uid_(),
+        cocina: "Tortillas La Ma",
+        producto: "Tortilla",
+        receta: "",
+        tipo: "",
+        presentacion: item.comboOrigen && item.comboOrigen.tortillaPresentacion ? item.comboOrigen.tortillaPresentacion : "1/2 kilo",
+        cantidad: 1,
+        precio: getCatalogPriceForItem_("Tortilla", "", "", item.comboOrigen && item.comboOrigen.tortillaPresentacion ? item.comboOrigen.tortillaPresentacion : "1/2 kilo"),
+        label: "Tortilla - " + (item.comboOrigen && item.comboOrigen.tortillaPresentacion ? item.comboOrigen.tortillaPresentacion : "1/2 kilo")
+      });
+      renderCarrito_();
+    }
+
+    function eliminarItem_(idx){
+      carrito.splice(idx, 1);
+      renderCarrito_();
+    }
+
+    function limpiarCarrito_(){
+      carrito = [];
+      renderCarrito_();
+    }
+
+    function enviarPedido_(){
+      const cliente = sincronizarClienteNombre_();
+      const dia = document.getElementById("dia").value;
+      const btn = document.getElementById("btnEnviar");
+      const combo = detectarComboSugerido_();
+
+      if (ventanaPedido && ventanaPedido.abierta === false) {
+        return mostrarMensaje_(ventanaPedido.mensaje || "Ya no estamos recibiendo pedidos para este dí­a. Intenta con otra fecha de entrega.", "error");
+      }
+
+      if (!cliente) return mostrarMensaje_("Escribe tu nombre para poder enviar el pedido.", "error");
+      if (!carrito.length) return mostrarMensaje_("Agrega al menos un producto al carrito.", "error");
+
+      const payload = carrito.map(function(item){
+        return Object.assign({}, item, { comboSugerido: combo ? combo.comboName : "" });
+      });
+
+      btn.disabled = true;
+      google.script.run
+        .withFailureHandler(function(err){
+          btn.disabled = false;
+          mostrarMensaje_("No pudimos enviar tu pedido. Intenta de nuevo o avisanos por mensaje. Detalle: " + errorText_(err), "error");
+        })
+        .withSuccessHandler(function(res){
+          btn.disabled = false;
+          carrito = [];
+          renderCarrito_();
+          document.getElementById("cliente").value = "";
+          const folio = res && res.folioCarrito ? res.folioCarrito : "";
+
+mostrarMensaje_(
+  folio
+    ? "Recibimos tu pedido. Tu folio es " + folio + ". Te confirmaremos en breve."
+    : "Recibimos tu pedido correctamente. Te confirmaremos en breve.",
+  "ok"
+);
+        })
+        .crearCarritoCliente(cliente, dia, payload);
+    }
+
+    function mostrarMensaje_(texto, tipo){
+      const el = document.getElementById("msg");
+      if (!texto) {
+        el.textContent = "";
+        el.className = "notice";
+        return;
+      }
+      el.textContent = texto;
+      el.className = "notice " + (tipo || "ok") + " show";
+    }
+
+    function money_(value){
+      return "$" + Number(value || 0).toFixed(2);
+    }
+
+    function round_(value, digits){
+      const factor = Math.pow(10, Number(digits == null ? 2 : digits));
+      return Math.round(Number(value || 0) * factor) / factor;
+    }
+
+    function uid_(){
+      return Date.now() + "_" + Math.floor(Math.random() * 100000);
+    }
+
+    function slug_(value){
+      return norm_(value).replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    }
+
+    function norm_(value){
+      return String(value || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function escapeHtml_(value){
+      return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function escapeAttr_(value){
+      return escapeHtml_(value).replace(/`/g, "&#96;");
+    }
+
+    function errorText_(err){
+      return err && err.message ? err.message : String(err || "Error desconocido");
+    }
+  </script>
 </body>
 </html>
+

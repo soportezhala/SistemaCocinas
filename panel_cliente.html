@@ -471,6 +471,76 @@
       }
     }
   </style>
+  <script>
+/**
+ * Permitir que panel_cliente.html funcione
+ * fuera de Apps Script usando fetch()
+ */
+(function () {
+
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwOh48dsgpGVhCUbs4250L7dMHbbAvvv1-rdLWHq9pK5xiMfhQmS1HaRR2t2BZ0xblfOg/exec";
+
+  if (window.google && window.google.script && window.google.script.run) {
+    // Estamos en Apps Script
+    return;
+  }
+
+  window.google = {
+    script: {
+      run: {
+        _successHandler: null,
+        _failureHandler: null,
+
+        withSuccessHandler(fn) {
+          this._successHandler = fn;
+          return this;
+        },
+
+        withFailureHandler(fn) {
+          this._failureHandler = fn;
+          return this;
+        },
+
+        obtenerDatosCliente(dia) {
+          callApi({
+            action: "obtenerCatalogoCliente",
+            dia
+          }, this);
+        },
+
+        crearCarritoCliente(cliente, dia, items) {
+          callApi({
+            action: "crearPedidoCliente",
+            cliente,
+            dia,
+            items
+          }, this);
+        }
+      }
+    }
+  };
+
+  function callApi(payload, ctx) {
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.exito) {
+        throw new Error(data.message || "Error API");
+      }
+      ctx._successHandler && ctx._successHandler(data);
+    })
+    .catch(err => {
+      console.error("API error:", err);
+      ctx._failureHandler && ctx._failureHandler(err);
+    });
+  }
+
+})();
+</script>
 </head>
 <body>
   <main class="page">
@@ -1458,76 +1528,7 @@
       return err && err.message ? err.message : String(err || "Error desconocido");
     }
   </script>
-  <script>
-/ permitir que panel_cliente.html/**
- * funcione fuera de Apps Script usando fetch()
- */
-(function () {
-
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwOh48dsgpGVhCUbs4250L7dMHbbAvvv1-rdLWHq9pK5xiMfhQmS1HaRR2t2BZ0xblfOg/exec";
-
-  if (window.google && window.google.script && window.google.script.run) {
-    // Estamos en Apps Script, no hacer nada
-    return;
-  }
-
-  // Simulación mínima de google.script.run
-  window.google = {
-    script: {
-      run: {
-        _successHandler: null,
-        _failureHandler: null,
-
-        withSuccessHandler(fn) {
-          this._successHandler = fn;
-          return this;
-        },
-
-        withFailureHandler(fn) {
-          this._failureHandler = fn;
-          return this;
-        },
-
-        obtenerDatosCliente(dia) {
-          callApi({
-            action: "obtenerCatalogoCliente",
-            dia
-          }, this);
-        },
-
-        crearCarritoCliente(cliente, dia, items) {
-          callApi({
-            action: "crearPedidoCliente",
-            cliente,
-            dia,
-            items
-          }, this);
-        }
-      }
-    }
-  };
-
-  function callApi(payload, ctx) {
-    fetch(WEB_APP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(payload)
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.exito) {
-        throw new Error(data.message || "Error API");
-      }
-      ctx._successHandler && ctx._successHandler(data);
-    })
-    .catch(err => {
-      console.error(err);
-      ctx._failureHandler && ctx._failureHandler(err);
-    });
-  }
-
-})();
-</script>
+  
 ``
 
 </body>

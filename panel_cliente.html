@@ -484,6 +484,7 @@ h1, h2 {
   font-family: var(--font-display);
 }
     /* === RESPONSIVE MÓVIL === */
+/* === CARRITO COMPACTO EN MÓVIL === */
 @media (max-width: 620px) {
 
   .cart {
@@ -492,15 +493,33 @@ h1, h2 {
     left: 0;
     right: 0;
     z-index: 50;
+
+    /* MUY IMPORTANTE */
+    max-height: 38vh;            /* ← reduce drásticamente el tamaño */
+    overflow-y: auto;
+
     border-radius: 16px 16px 0 0;
-    box-shadow: 0 -10px 30px rgba(0,0,0,.15);
-    max-height: 65vh;
-    overflow: auto;
+    box-shadow: 0 -8px 20px rgba(0,0,0,.18);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
+  /* El contenido principal ya no queda tapado */
   .products-grid {
-    padding-bottom: 70vh;
+    padding-bottom: 42vh;
   }
+
+  /* Botón siempre usable */
+  #btnEnviar {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+  }
+
+  .btn {
+    min-height: 48px;
+    font-size: 1rem;
+  }
+}
 
   .btn {
     min-height: 48px;

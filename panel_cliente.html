@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pedido cliente</title>
 
-  <!-- ================= ADAPTADOR google.script.run -> fetch (DEBE IR ANTES) ================= -->
+  <!-- ===== ADAPTADOR google.script.run -> fetch (DEBE IR ANTES DE CUALQUIER USO) ===== -->
   <script>
   /**
    * Permite que panel_cliente.html funcione fuera de Apps Script
@@ -30,6 +30,7 @@
           obtenerDatosCliente(dia) {
             callApi({ action: "obtenerCatalogoCliente", dia }, this);
           },
+
           crearCarritoCliente(cliente, dia, items) {
             callApi({ action: "crearPedidoCliente", cliente, dia, items }, this);
           }
@@ -115,6 +116,7 @@
         "message cart"
         "products cart";
       gap: 20px;
+      align-items: start;
     }
 
     .hero-panel { grid-area: hero; }
@@ -122,45 +124,92 @@
     .products-grid { grid-area: products; }
     .cart { grid-area: cart; }
 
-    .products-grid { display: grid; grid-template-columns: repeat(2, minmax(280px, 1fr)); gap: 20px; }
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(280px, 1fr));
+      gap: 20px;
+      align-items: start;
+    }
 
     .badge {
-      display: inline-flex; align-items: center;
-      border-radius: 999px; background: var(--soft);
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      background: var(--soft);
       border: 1px solid var(--line);
-      padding: 6px 10px; font-size: .82rem; color: #725a45;
+      padding: 6px 10px;
+      font-size: .82rem;
+      color: #725a45;
     }
 
     .btn {
-      border: 0; border-radius: 999px; min-height: 44px;
-      padding: 10px 14px; font-weight: 700; cursor: pointer;
-      color: #fff; background: var(--coral);
+      border: 0;
+      border-radius: 999px;
+      min-height: 44px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      background: var(--coral);
+      box-shadow: 0 8px 18px rgba(232,115,82,.16);
     }
-    .btn.primary { background: var(--teal); }
-    .btn.ghost { color: var(--ink); background: #fff; border: 1px solid #d7c8b8; }
+
+    .btn.primary { background: var(--teal); box-shadow: 0 8px 18px rgba(8,116,134,.16); }
+    .btn.ghost { color: var(--ink); background: #fff; border: 1px solid #d7c8b8; box-shadow: none; }
 
     .cart { position: sticky; top: 12px; display: grid; gap: 12px; }
 
-    .notice { display:none; border-radius:16px; padding:12px; }
-    .notice.show { display:block; }
-    .notice.error { background:#fff1ee; color:var(--danger); }
-    .notice.ok { background:#eef9f1; color:var(--ok); }
-    .notice.tip { background:#fff6d8; color:#7a5c15; }
-
-    @media (max-width:1180px){
-      .workspace{ grid-template-columns:1fr; grid-template-areas:"hero" "message" "cart" "products"; }
-      .cart{ position:static; }
+    .notice {
+      display: none;
+      border-radius: 16px;
+      padding: 12px;
+      border: 1px solid transparent;
+      line-height: 1.4;
     }
 
-    @media (max-width:620px){
-      .cart{
-        position:fixed; bottom:0; left:0; right:0; z-index:50;
-        border-radius:16px 16px 0 0;
-        box-shadow:0 -10px 30px rgba(0,0,0,.15);
-        max-height:65vh; overflow:auto;
+    .notice.show { display: block; animation: fadeIn .2s ease; }
+    .notice.error { color: var(--danger); background: #fff1ee; border-color: #efc6bc; }
+    .notice.ok { color: var(--ok); background: #eef9f1; border-color: #bedfc8; }
+    .notice.tip { color: #7a5c15; background: #fff6d8; border-color: #f3d27a; }
+
+    @keyframes fadeIn { from { opacity:0; transform: translateY(4px);} to {opacity:1; transform:none;} }
+
+    @media (max-width:1180px) {
+      .workspace {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "hero"
+          "message"
+          "cart"
+          "products";
       }
-      .products-grid{ padding-bottom:70vh; grid-template-columns:1fr; }
-      .btn{ min-height:48px; font-size:1rem; }
+      .cart { position: static; }
+    }
+
+    @media (max-width:620px) {
+      .cart {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -10px 30px rgba(0,0,0,.15);
+        max-height: 65vh;
+        overflow: auto;
+      }
+
+      .products-grid {
+        grid-template-columns: 1fr;
+        padding-bottom: 70vh;
+      }
+
+      .btn { min-height: 48px; font-size: 1rem; }
+    }
+
+    :focus-visible {
+      outline: 3px solid rgba(8,116,134,.45);
+      outline-offset: 2px;
     }
   </style>
 </head>
@@ -170,31 +219,43 @@
     <section class="panel hero-panel">
       <span class="badge">Pedido en línea</span>
       <h1>Haz tu pedido</h1>
-      <p class="muted">Elige tus productos, revisa tu carrito y envía tu pedido.</p>
+      <p class="muted">Elige tus productos, revisa tu carrito y envía tu pedido. Te confirmaremos antes de prepararlo.</p>
     </section>
 
     <div id="msg" class="notice workspace-message"></div>
 
     <aside class="panel cart">
       <h2>Carrito</h2>
+      <p class="muted">Aquí verás lo que agregues. Puedes quitar productos antes de enviar.</p>
       <div id="menuInfo" class="notice tip"></div>
       <div id="comboTip" class="notice tip"></div>
       <div id="promoTip" class="notice ok"></div>
-      <div id="carritoItems"><div class="muted">Aún no has agregado productos.</div></div>
+      <div id="carritoItems" class="muted">Aún no has agregado productos.</div>
       <button id="btnEnviar" class="btn primary" type="button" onclick="enviarPedido_()">Enviar mi pedido</button>
+      <button class="btn ghost" type="button" onclick="limpiarCarrito_()">Vaciar carrito</button>
     </aside>
 
     <section class="products-grid">
       <div class="panel">
         <h2>Tortillas La Ma</h2>
-        <div id="tlmProductos">Cargando...</div>
+        <div id="tlmProductos">Cargando opciones disponibles…</div>
       </div>
+
       <div class="panel">
         <h2>La Cocina de Susy</h2>
-        <select id="guisadoNombre"></select>
-        <select id="guisadoPresentacion"></select>
-        <input id="guisadoCantidad" type="number" value="1" />
-        <button class="btn primary" onclick="agregarGuisado_()">Agregar</button>
+        <div>
+          <label>Guisado</label>
+          <select id="guisadoNombre"></select>
+        </div>
+        <div>
+          <label>Presentación</label>
+          <select id="guisadoPresentacion"></select>
+        </div>
+        <div>
+          <label>Cantidad</label>
+          <input id="guisadoCantidad" type="number" min="1" step="1" value="1">
+        </div>
+        <button class="btn primary" type="button" onclick="agregarGuisado_()">Agregar</button>
       </div>
     </section>
   </section>
@@ -203,25 +264,88 @@
 <script>
   let catalogoCliente = null;
   let carrito = [];
-  let ventanaPedido = { abierta:true };
+  let ventanaPedido = { abierta: true };
 
   cargarCatalogo_();
 
   function cargarCatalogo_(){
     google.script.run
+      .withFailureHandler(function(err){
+        mostrarMensaje_("No se pudo cargar el catálogo: " + errorText_(err), "error");
+      })
       .withSuccessHandler(function(data){
         catalogoCliente = data || {};
-        ventanaPedido = catalogoCliente.ventanaPedido || {abierta:true};
-        document.getElementById("menuInfo").textContent = ventanaPedido.mensaje || "";
-      })
-      .withFailureHandler(function(err){
-        document.getElementById("msg").textContent = err.message || err;
+        ventanaPedido = catalogoCliente.ventanaPedido || { abierta: true };
+        renderMenuInfo_();
+        mostrarMensaje_("", "");
       })
       .obtenerDatosCliente("Lunes");
   }
 
-  function agregarGuisado_(){ alert("Demo: guisado agregado"); }
-  function enviarPedido_(){ alert("Demo: pedido enviado"); }
+  function renderMenuInfo_(){
+    const el = document.getElementById("menuInfo");
+    if (!el) return;
+    if (ventanaPedido && ventanaPedido.abierta === false) {
+      el.textContent = ventanaPedido.mensaje || "Por ahora no estamos recibiendo pedidos.";
+      el.className = "notice error show";
+    } else if (ventanaPedido && ventanaPedido.mensaje) {
+      el.textContent = ventanaPedido.mensaje;
+      el.className = "notice tip show";
+    } else {
+      el.textContent = "";
+      el.className = "notice tip";
+    }
+  }
+
+  function agregarGuisado_(){
+    carrito.push({ id: Date.now(), label: "Guisado agregado" });
+    document.getElementById("carritoItems").textContent = "Productos en carrito: " + carrito.length;
+  }
+
+  function limpiarCarrito_(){
+    carrito = [];
+    document.getElementById("carritoItems").textContent = "Aún no has agregado productos.";
+  }
+
+  function enviarPedido_(){
+    const btn = document.getElementById("btnEnviar");
+    if (!carrito.length) return mostrarMensaje_("Agrega al menos un producto al carrito.", "error");
+    btn.disabled = true;
+
+    google.script.run
+      .withFailureHandler(function(err){
+        btn.disabled = false;
+        mostrarMensaje_("No pudimos enviar tu pedido: " + errorText_(err), "error");
+      })
+      .withSuccessHandler(function(res){
+        btn.disabled = false;
+        carrito = [];
+        limpiarCarrito_();
+        const folio = res && res.folioCarrito ? res.folioCarrito : "";
+        mostrarMensaje_(
+          folio
+            ? "Recibimos tu pedido. Tu folio es " + folio + ". Te confirmaremos en breve."
+            : "Recibimos tu pedido correctamente. Te confirmaremos en breve.",
+          "ok"
+        );
+      })
+      .crearCarritoCliente("Cliente", "Lunes", carrito);
+  }
+
+  function mostrarMensaje_(texto, tipo){
+    const el = document.getElementById("msg");
+    if (!texto) {
+      el.textContent = "";
+      el.className = "notice workspace-message";
+      return;
+    }
+    el.textContent = texto;
+    el.className = "notice workspace-message " + (tipo || "ok") + " show";
+  }
+
+  function errorText_(err){
+    return err && err.message ? err.message : String(err || "Error desconocido");
+  }
 </script>
 </body>
 </html>

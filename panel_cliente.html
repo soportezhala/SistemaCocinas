@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel Cliente</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 1rem; }
+    h1 { margin-top: 0; }
+    .error { color: red; }
+    .ok { color: green; }
+    select, button { padding: .5rem; margin: .25rem 0; width: 100%; }
+    ul { padding-left: 1rem; }
+  </style>
+</head>
+<body>
+
+<h1>Pedidos</h1>
+
+<div id="estado"></div>
+
+<label>Día de entrega</label>
+<select id="dia">
+  <option value="Lunes">Lunes</option>
+  <option value="Martes">Martes</option>
+  <option value="Miércoles">Miércoles</option>
+  <option value="Jueves">Jueves</option>
+  <option value="Viernes">Viernes</option>
+</select>
+
+<button onclick="cargarCatalogo()">Cargar menú</button>
+
+<hr>
+
+<div id="contenido"></div>
+
+<script>
+const WEB_APP_URL = "PEGA_AQUI_TU_WEB_APP_URL";
+
+function setEstado(msg, ok = true) {
+  const div = document.getElementById("estado");
+  div.className = ok ? "ok" : "error";
+  div.textContent = msg;
+}
+
+function cargarCatalogo() {
+  const dia = document.getElementById("dia").value;
+  setEstado("Cargando catálogo...");
+
+  fetch(WEB_APP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      action: "obtenerCatalogoCliente",
+      dia
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.exito) {
+      setEstado(data.message, false);
+      return;
+    }
+    renderCatalogo(data);
+    setEstado("Catálogo cargado");
+  })
+  .catch(err => {
+    setEstado(err.message, false);
+  });
+}
+
+function renderCatalogo(data) {
+  const div = document.getElementById("contenido");
+  div.innerHTML = "";
+
+  // Ventana de pedido
+  const vp = document.createElement("p");
+  vp.textContent = data.ventanaPedido.mensaje;
+  div.appendChild(vp);
+
+  // Clientes
+  const hClientes = document.createElement("h3");
+  hClientes.textContent = "Clientes";
+  div.appendChild(hClientes);
+
+  const ulClientes = document.createElement("ul");
+  data.clientes.forEach(c => {
+    const li = document.createElement("li");
+    li.textContent = c;
+    ulClientes.appendChild(li);
+  });
+  div.appendChild(ulClientes);
+
+  // Combos activos
+  const hCombos = document.createElement("h3");
+  hCombos.textContent = "Combos activos";
+  div.appendChild(hCombos);
+
+  const ulCombos = document.createElement("ul");
+  data.combosActivos.forEach(c => {
+    const li = document.createElement("li");
+    li.textContent = c;
+    ulCombos.appendChild(li);
+  });
+  div.appendChild(ulCombos);
+}
+</script>
+
+</body>
+</html>

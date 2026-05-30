@@ -470,6 +470,26 @@
         width: 100%;
       }
     }
+    /* ===============================
+   ENCABEZADO DE COCINA
+   =============================== */
+.cocina-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.cocina-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.cocina-nombre {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
     /* === MEJORAS TIPOGRAFÍA === */
 :root {
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -655,7 +675,7 @@ h1, h2 {
         <div class="panel">
           <div class="section-title">
             <div>
-              <h2>Tortillas La Ma</h2>
+             contenedor.innerHTML += renderCocinaHeader_("Tortillas La Ma");
               <p class="muted">Tortillas, sopes, huaraches y gorditas.</p>
             </div>
             <span class="badge">Antojitos</span>
@@ -668,7 +688,7 @@ h1, h2 {
         <div class="panel">
           <div class="section-title">
             <div>
-              <h2>La Cocina de Susy</h2>
+              contenedor.innerHTML += renderCocinaHeader_("La Cocina de Susy");
               <p class="muted">Guisados, complementos y salsas disponibles para tu pedido.</p>
             </div>
             <span class="badge">Cocina</span>
@@ -722,6 +742,21 @@ h1, h2 {
     let carrito = [];
     let clientesMap = {};
     let ventanaPedido = { abierta: true };
+
+    /* ===============================
+   IDENTIDAD VISUAL DE COCINAS
+   =============================== */
+const COCINAS_UI = {
+  "La Cocina de Susy": {
+    nombre: "La Cocina de Susy",
+    logo: "img/logosusy.png"
+  },
+  "Tortillas La Ma": {
+    nombre: "Tortillas La Ma",
+    logo: "img/logolama3.png"
+  }
+};
+    
     /* ===============================
    DISPONIBILIDAD – HELPERS
    =============================== */
@@ -834,7 +869,17 @@ function maxUnidadesDisponibles_(tipo, receta, presentacion) {
         })
         .obtenerDatosCliente(dia);
     }
+function renderCocinaHeader_(nombreCocina) {
+  const ui = COCINAS_UI[nombreCocina];
+  if (!ui) return "<h2>" + nombreCocina + "</h2>";
 
+  return `
+    <div class="cocina-header">
+      <img src="${ui.logo}" class="cocina-logo" alt="${ui.nombre}">
+      <span class="cocina-nombre">${ui.nombre}</span>
+    </div>
+  `;
+}
     function renderMenuInfo_(){
       const el = document.getElementById("menuInfo");
       const menu = (catalogoCliente || {}).menu || {};

@@ -616,131 +616,220 @@ h1, h2 {
 
 </head>
 <body>
-  <main class="page">
-    <section class="workspace">
-      <section class="panel hero-panel">
-        <div class="hero-top">
-          <div class="hero-copy">
-            <span class="badge">Pedido en lí­nea</span>
-            <h1>Haz tu pedido</h1>
-            <p class="muted">Elige tus productos, revisa tu carrito y enví­a tu pedido. Te confirmaremos antes de prepararlo.</p>
-            <div class="quick-steps">
-              <span>1. Elige</span>
-              <span>2. Revisa</span>
-              <span>3. Enví­a</span>
-            </div>
-          </div>
+ <main class="page">
+  <section class="workspace">
 
-          <div class="identity-card">
-            <div class="field">
-              <label for="cliente">Tu nombre</label>
-              <input id="cliente" type="text" autocomplete="name" list="clientesSugeridos" placeholder="Ej. Angelica Hernandez" onblur="sincronizarClienteNombre_()">
-              <datalist id="clientesSugeridos"></datalist>
-              <div class="helper-text">Si tu nombre ya existe, te lo iremos sugiriendo mientras escribes para evitar duplicados.</div>
-            </div>
-            <div class="field">
-              <label for="dia">Dí­a para recibir tu pedido</label>
-              <select id="dia" onchange="onDiaEntregaChange_()">
-                <option value="Lunes">Lunes</option>
-                <option value="Viernes">Viernes</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div id="msg" class="notice workspace-message"></div>
-
-      <aside class="panel cart">
-        <div>
-          <h2>Carrito</h2>
-          <p class="muted">Aquí­ verás lo que agregues. Puedes quitar productos antes de enviar.</p>
-        </div>
-        <div id="menuInfo" class="notice tip"></div>
-        <div id="comboTip" class="notice tip"></div>
-        <div id="promoTip" class="notice ok"></div>
-        <div id="carritoItems" class="cart-items">
-          <div class="empty">Aún no has agregado productos.</div>
-        </div>
-        <div class="total-box">
-          <div id="subtotalRow" class="total-line" style="display:none;"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
-          <div id="descuentoRow" class="total-line discount" style="display:none;"><span>Paquete Familiar 4 Medios</span><span id="descuentoPromo">-$0.00</span></div>
-          <div class="total-line final"><span>Total aproximado</span><span id="total">$0.00</span></div>
-        </div>
-        <button id="btnEnviar" class="btn primary" type="button" onclick="enviarPedido_()">Enviar mi pedido</button>
-        <button class="btn ghost" type="button" onclick="limpiarCarrito_()">Vaciar carrito</button>
-      </aside>
-
-      <section class="products-grid">
-        <div class="panel">
-          <div class="section-title">
-            <div>
-             contenedor.innerHTML += renderCocinaHeader_("Tortillas La Ma");
-              <p class="muted">Tortillas, sopes, huaraches y gorditas.</p>
-            </div>
-            <span class="badge">Antojitos</span>
-          </div>
-          <div id="tlmProductos" class="product-list">
-            <div class="empty">Cargando opciones disponibles...</div>
+    <!-- HERO / DATOS CLIENTE -->
+    <section class="panel hero-panel">
+      <div class="hero-top">
+        <div class="hero-copy">
+          <span class="badge">Pedido en línea</span>
+          <h1>Haz tu pedido</h1>
+          <p class="muted">
+            Elige tus productos, revisa tu carrito y envía tu pedido.
+            Te confirmaremos antes de prepararlo.
+          </p>
+          <div class="quick-steps">
+            <span>1. Elige</span>
+            <span>2. Revisa</span>
+            <span>3. Envía</span>
           </div>
         </div>
 
-       
-<div class="panel">
-  <div class="section-title">
-    <div id="header-cocina-susy"></div>
-    <span class="badge">Cocina</span>
-  </div>
-
-  <p class="muted">
-    Guisados, complementos y salsas disponibles para tu pedido.
-  </p>
-</div>
-
-
-          <div class="product-card">
-            <h3>Guisados y complementos</h3>
-            <div class="controls-susy">
-              <div class="field">
-                <label for="guisadoNombre">Elige opción</label>
-                <select id="guisadoNombre" onchange="renderGuisadoPresentaciones_()"></select>
-              </div>
-              <div class="field">
-                <label for="guisadoPresentacion">Elige presentación</label>
-                <select id="guisadoPresentacion"></select>
-              </div>
-              <div class="field">
-                <label for="guisadoCantidad">Cantidad</label>
-                <input id="guisadoCantidad" type="number" min="1" step="1" value="1">
-              </div>
-              <button class="btn primary" type="button" onclick="agregarGuisado_()">Agregar</button>
+        <div class="identity-card">
+          <div class="field">
+            <label for="cliente">Tu nombre</label>
+            <input
+              id="cliente"
+              type="text"
+              autocomplete="name"
+              list="clientesSugeridos"
+              placeholder="Ej. Angelica Hernandez"
+              onblur="sincronizarClienteNombre_()"
+            >
+            <datalist id="clientesSugeridos"></datalist>
+            <div class="helper-text">
+              Si tu nombre ya existe, te lo iremos sugiriendo mientras escribes para evitar duplicados.
             </div>
-            <div class="helper-text">No necesitas elegir si es con carne, sin carne o complemento: el sistema lo detecta automáticamente según la opción seleccionada.</div>
           </div>
 
-          <div class="product-card">
-            <h3>Salsas</h3>
-            <div class="controls-salsa">
-              <div class="field">
-                <label for="salsaNombre">Elige salsa</label>
-                <select id="salsaNombre" onchange="renderSalsaPresentaciones_()"></select>
-              </div>
-              <div class="field">
-                <label for="salsaPresentacion">Elige presentación</label>
-                <select id="salsaPresentacion"></select>
-              </div>
-              <div class="field">
-                <label for="salsaCantidad">Cantidad</label>
-                <input id="salsaCantidad" type="number" min="1" step="1" value="1">
-              </div>
-              <button class="btn primary" type="button" onclick="agregarSalsa_()">Agregar</button>
-            </div>
+          <div class="field">
+            <label for="dia">Día para recibir tu pedido</label>
+            <select id="dia" onchange="onDiaEntregaChange_()">
+              <option value="Lunes">Lunes</option>
+              <option value="Viernes">Viernes</option>
+            </select>
           </div>
         </div>
-      </section>
+      </div>
     </section>
-  </main>
 
+    <!-- MENSAJES -->
+    <div id="msg" class="notice workspace-message"></div>
+
+    <!-- CARRITO -->
+    <aside class="panel cart">
+      <div>
+        <h2>Carrito</h2>
+        <p class="muted">
+          Aquí verás lo que agregues. Puedes quitar productos antes de enviar.
+        </p>
+      </div>
+
+      <div id="menuInfo" class="notice tip"></div>
+      <div id="comboTip" class="notice tip"></div>
+      <div id="promoTip" class="notice ok"></div>
+
+      <div id="carritoItems" class="cart-items">
+        <div class="empty">Aún no has agregado productos.</div>
+      </div>
+
+      <div class="total-box">
+        <div id="subtotalRow" class="total-line" style="display:none;">
+          <span>Subtotal</span>
+          <span id="subtotal">$0.00</span>
+        </div>
+        <div id="descuentoRow" class="total-line discount" style="display:none;">
+          <span>Paquete Familiar 4 Medios</span>
+          <span id="descuentoPromo">-$0.00</span>
+        </div>
+        <div class="total-line final">
+          <span>Total aproximado</span>
+          <span id="total">$0.00</span>
+        </div>
+      </div>
+
+      <button
+        id="btnEnviar"
+        class="btn primary"
+        type="button"
+        onclick="enviarPedido_()"
+      >
+        Enviar mi pedido
+      </button>
+
+      <button
+        class="btn ghost"
+        type="button"
+        onclick="limpiarCarrito_()"
+      >
+        Vaciar carrito
+      </button>
+    </aside>
+
+    <!-- PRODUCTOS -->
+    <section class="products-grid">
+
+      <!-- TORTILLAS LA MA -->
+      <div class="panel">
+        <div class="section-title">
+          <div id="header-cocina-tlm"></div>
+          <span class="badge">Antojitos</span>
+        </div>
+
+        <p class="muted">
+          Tortillas, sopes, huaraches y gorditas.
+        </p>
+
+        <div id="tlmProductos" class="product-list">
+          <div class="empty">Cargando opciones disponibles...</div>
+        </div>
+      </div>
+
+      <!-- LA COCINA DE SUSY -->
+      <div class="panel">
+        <div class="section-title">
+          <div id="header-cocina-susy"></div>
+          <span class="badge">Cocina</span>
+        </div>
+
+        <p class="muted">
+          Guisados, complementos y salsas disponibles para tu pedido.
+        </p>
+
+        <div class="product-card">
+          <h3>Guisados y complementos</h3>
+          <div class="controls-susy">
+            <div class="field">
+              <label for="guisadoNombre">Elige opción</label>
+              <select
+                id="guisadoNombre"
+                onchange="renderGuisadoPresentaciones_()"
+              ></select>
+            </div>
+
+            <div class="field">
+              <label for="guisadoPresentacion">Elige presentación</label>
+              <select id="guisadoPresentacion"></select>
+            </div>
+
+            <div class="field">
+              <label for="guisadoCantidad">Cantidad</label>
+              <input
+                id="guisadoCantidad"
+                type="number"
+                min="1"
+                step="1"
+                value="1"
+              >
+            </div>
+
+            <button
+              class="btn primary"
+              type="button"
+              onclick="agregarGuisado_()"
+            >
+              Agregar
+            </button>
+          </div>
+
+          <div class="helper-text">
+            No necesitas elegir si es con carne, sin carne o complemento:
+            el sistema lo detecta automáticamente según la opción seleccionada.
+          </div>
+        </div>
+
+        <div class="product-card">
+          <h3>Salsas</h3>
+          <div class="controls-salsa">
+            <div class="field">
+              <label for="salsaNombre">Elige salsa</label>
+              <select
+                id="salsaNombre"
+                onchange="renderSalsaPresentaciones_()"
+              ></select>
+            </div>
+
+            <div class="field">
+              <label for="salsaPresentacion">Elige presentación</label>
+              <select id="salsaPresentacion"></select>
+            </div>
+
+            <div class="field">
+              <label for="salsaCantidad">Cantidad</label>
+              <input
+                id="salsaCantidad"
+                type="number"
+                min="1"
+                step="1"
+                value="1"
+              >
+            </div>
+
+            <button
+              class="btn primary"
+              type="button"
+              onclick="agregarSalsa_()"
+            >
+              Agregar
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </section>
+</main>
   <script>
     let catalogoCliente = null;
     let carrito = [];

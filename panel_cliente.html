@@ -722,6 +722,80 @@ h1, h2 {
     let carrito = [];
     let clientesMap = {};
     let ventanaPedido = { abierta: true };
+    /* ===============================
+   DISPONIBILIDAD – HELPERS
+   =============================== */
+
+/**
+ * Devuelve litros restantes para un producto (guisado o salsa)
+ */
+function getLitrosRestantes_(tipo, receta) {
+  if (!catalogoCliente || !catalogoCliente.availability) return Infinity;
+
+  const a = catalogoCliente.availability;
+  const usados =
+    (a.consumoLitros?.[tipo]?.[receta]) || 0;
+
+  return Math.max(0, a.limiteDefaultLitros - usados);
+}
+
+/**
+ * Convierte presentación a litros (FRONTEND)
+ * ⚠️ Debe reflejar EXACTAMENTE getLitros_ del backend
+ */
+function litrosPorPresentacion_(presentacion) {
+  if (presentacion === "1 litro" || presentacion === "1 litro Especial") return 1;
+  if (presentacion === "1/2 litro" || presentacion === "1/2 litro Especial") return 0.5;
+  if (presentacion === "Vaso 10oz" || presentacion === "Vaso 10oz Especial") return 0.3;
+  return 0;
+}
+
+/**
+ * Devuelve cuántas unidades máximas puede pedir el cliente
+ */
+function maxUnidadesDisponibles_(tipo, receta, presentacion) {
+  const restante = getLitrosRestantes_(tipo, receta);
+  const litrosUnidad = litrosPorPresentacion_(presentacion);
+  if (!litrosUnidad) return 0;
+  return Math.floor(restante / litrosUnidad);
+}
+
+    function validarDisponibilidadSeleccion_(
+  tipo,       // "guisados" | "salsas"
+  receta,     // nombre del guiso o salsa
+  presentacion,
+  cantidad
+) {
+  const max = maxUnidadesDisponibles_(tipo, receta, presentacion);
+
+  if (max <= 0) {
+    mostrarMensaje_(
+      "❌ Este producto ya no tiene disponibilidad para el día seleccionado.",
+      "error"
+    );
+    return false;
+  }
+
+  if (cantidad > max) {
+    mostrarMensaje_(
+      "⚠️ Cantidad no disponible. Solo es posible solicitar hasta " +
+      max + " unidad(es) de esta presentación.",
+      "warning"
+    );
+    return false;
+  }
+
+  if (max < 4) {
+    mostrarMensaje_(
+      "⚠️ Disponibilidad limitada para este producto.",
+      "warning"
+    );
+  }
+
+  return true;
+}
+
+    
 
     const PRODUCTOS_TLM = [
       { label: "Tortilla", aliases: ["Tortilla"] },
@@ -985,6 +1059,15 @@ h1, h2 {
       const presentacion = presSelect.value || "";
       const precio = presSelect.selectedOptions.length ? Number(presSelect.selectedOptions[0].dataset.precio || 0) : 0;
       if (!receta || !presentacion || cantidad < 1) return mostrarMensaje_("Elige guisado, presentación y cantidad válida.", "error");
+      // ✅ VALIDACIÓN DE DISPONIBILIDAD (SOLO CLIENTE)
+        const ok = validarDisponibilidadSeleccion_(
+        "guisados",
+        receta,
+        presentacion,
+        cantidad
+      );
+      if (!ok) return;
+      
       const etiquetaBase = norm_(tipo) === "complemento" ? "Complemento" : "Guisado";
 
       carrito.push({
@@ -1011,6 +1094,13 @@ h1, h2 {
       const presentacion = presSelect.value || "";
       const precio = presSelect.selectedOptions.length ? Number(presSelect.selectedOptions[0].dataset.precio || 0) : 0;
       if (!receta || !presentacion || cantidad < 1) return mostrarMensaje_("Elige salsa, presentación y cantidad válida.", "error");
+        const ok = validarDisponibilidadSeleccion_(
+        "salsas",
+        receta,
+        presentacion,
+        cantidad
+      );
+      if (!ok) return;
 
       carrito.push({
         id: uid_(),

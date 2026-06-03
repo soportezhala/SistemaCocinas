@@ -359,9 +359,13 @@ const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwOh48dsgpGVhCUbs42
     .then(function(r){ return r.json(); })
     .then(function(data){
       if (!data.exito) throw new Error(data.message || "Error API");
-      ctx._successHandler && ctx._successHandler(
-        payload.action === "obtenerSemanasDisponibles" ? (data.semanas || []) : data
-      );
+      if (!ctx._successHandler) return;
+      if (payload.action === "obtenerSemanasDisponibles") {
+        const semanas = Array.isArray(data) ? data : (Array.isArray(data.semanas) ? data.semanas : []);
+        ctx._successHandler(semanas);
+        return;
+      }
+      ctx._successHandler(data);
     })
     .catch(function(err){
       console.error("API error:", err);

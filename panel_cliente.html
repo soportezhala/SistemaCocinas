@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
   <title>Pedido cliente</title>
   <style>
     :root {
@@ -586,6 +587,10 @@ h1, h2 {
           callApi({ action: "obtenerCatalogoCliente", dia }, this);
         },
 
+        obtenerDisponibilidadCliente(dia) {
+          callApi({ action: "obtenerDisponibilidadCliente", dia }, this);
+        },
+
         crearCarritoCliente(cliente, dia, items) {
           callApi({ action: "crearPedidoCliente", cliente, dia, items }, this);
         }
@@ -840,6 +845,8 @@ h1, h2 {
     let carrito = [];
     let clientesMap = {};
     let ventanaPedido = { abierta: true };
+    let ultimaActualizacionDisponibilidad_ = 0;
+    let refrescandoDisponibilidad_ = false;
 
     /* ===============================
    IDENTIDAD VISUAL DE COCINAS
@@ -1018,18 +1025,61 @@ function renderDisponibilidadProducto_(targetId, tipo, receta, presentacion, can
   el.textContent = "";
 }
 
+function refrescarDisponibilidadCliente_(callback){
+  const dia = document.getElementById("dia") ? document.getElementById("dia").value : "";
+  if (!dia || refrescandoDisponibilidad_) {
+    if (typeof callback === "function") callback();
+    return;
+  }
+
+  refrescandoDisponibilidad_ = true;
+  google.script.run
+    .withSuccessHandler(function(data){
+      refrescandoDisponibilidad_ = false;
+      if (data) {
+        catalogoCliente = catalogoCliente || {};
+        catalogoCliente.availability = data;
+        ultimaActualizacionDisponibilidad_ = Date.now();
+      }
+      if (typeof callback === "function") callback();
+    })
+    .withFailureHandler(function(){
+      refrescandoDisponibilidad_ = false;
+      if (typeof callback === "function") callback();
+    })
+    .obtenerDisponibilidadCliente(dia);
+}
+
 function updateDisponibilidadGuisado_(){
   const guisadoSelect = document.getElementById("guisadoNombre");
   const presSelect = document.getElementById("guisadoPresentacion");
   const cantidad = Number(document.getElementById("guisadoCantidad")?.value || 0);
-  renderDisponibilidadProducto_("guisadoDisponibilidad", "guisados", guisadoSelect ? guisadoSelect.value : "", presSelect ? presSelect.value : "", cantidad);
+  const dibujar = function(){
+    renderDisponibilidadProducto_("guisadoDisponibilidad", "guisados", guisadoSelect ? guisadoSelect.value : "", presSelect ? presSelect.value : "", cantidad);
+  };
+
+  if (!ultimaActualizacionDisponibilidad_ || (Date.now() - ultimaActualizacionDisponibilidad_) > 45000) {
+    refrescarDisponibilidadCliente_(dibujar);
+    return;
+  }
+
+  dibujar();
 }
 
 function updateDisponibilidadSalsa_(){
   const salsaSelect = document.getElementById("salsaNombre");
   const presSelect = document.getElementById("salsaPresentacion");
   const cantidad = Number(document.getElementById("salsaCantidad")?.value || 0);
-  renderDisponibilidadProducto_("salsaDisponibilidad", "salsas", salsaSelect ? salsaSelect.value : "", presSelect ? presSelect.value : "", cantidad);
+  const dibujar = function(){
+    renderDisponibilidadProducto_("salsaDisponibilidad", "salsas", salsaSelect ? salsaSelect.value : "", presSelect ? presSelect.value : "", cantidad);
+  };
+
+  if (!ultimaActualizacionDisponibilidad_ || (Date.now() - ultimaActualizacionDisponibilidad_) > 45000) {
+    refrescarDisponibilidadCliente_(dibujar);
+    return;
+  }
+
+  dibujar();
 }
 
     
@@ -1042,6 +1092,14 @@ function updateDisponibilidadSalsa_(){
     ];
 
     cargarCatalogo_();
+
+    setInterval(function(){
+      if (document.hidden) return;
+      refrescarDisponibilidadCliente_(function(){
+        updateDisponibilidadGuisado_();
+        updateDisponibilidadSalsa_();
+      });
+    }, 45000);
 
     function onDiaEntregaChange_(){
       if (carrito.length) {
@@ -1058,9 +1116,10 @@ function updateDisponibilidadSalsa_(){
         .withFailureHandler(function(err){
           mostrarMensaje_("No se pudo cargar el catalogo: " + errorText_(err), "error");
         })
-       .withSuccessHandler(function(data){
+      .withSuccessHandler(function(data){
         catalogoCliente = data || {};
         ventanaPedido = (catalogoCliente || {}).ventanaPedido || { abierta: true };
+        ultimaActualizacionDisponibilidad_ = Date.now();
         hydrateClientes_((catalogoCliente || {}).clientes || []);
         renderMenuInfo_();
         renderTortillas_();

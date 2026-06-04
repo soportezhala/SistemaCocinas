@@ -292,6 +292,111 @@ NOTAS
   body.mobile .viewer-detail-line span:last-child{
     font-size:13px;
   }
+  body.viewer-susy.mobile{
+    font-size:16px;
+    line-height:1.38;
+    color:#2f2a25;
+  }
+  body.viewer-susy.mobile .header{
+    align-items:flex-start;
+    background:#a98161;
+  }
+  body.viewer-susy.mobile .header h2{
+    font-size:28px;
+    line-height:1.05;
+    color:#fff9f0;
+  }
+  body.viewer-susy.mobile #subtitulo{
+    color:#f6efe6;
+    font-size:14px;
+    line-height:1.25;
+  }
+  body.viewer-susy.mobile .chip{
+    font-size:13px;
+    padding:6px 10px;
+    border:1px solid rgba(58,53,48,.45);
+  }
+  body.viewer-susy.mobile .card{
+    padding:12px;
+    border-color:#ead9c9;
+  }
+  body.viewer-susy.mobile .kpi-grid{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  body.viewer-susy.mobile .kpi{
+    padding:10px 12px;
+    border-color:#ead9c9;
+    background:#fffdf9;
+  }
+  body.viewer-susy.mobile .kpi small{
+    color:#695e53;
+    font-size:12px;
+  }
+  body.viewer-susy.mobile .kpi div{
+    font-size:18px !important;
+    line-height:1.05;
+    color:#202020;
+  }
+  body.viewer-susy.mobile h2{
+    font-size:28px;
+  }
+  body.viewer-susy.mobile h3{
+    font-size:20px;
+    line-height:1.12;
+    color:#2f2a25;
+    margin-bottom:8px;
+  }
+  body.viewer-susy.mobile .section-title{
+    font-size:14px;
+    color:#6b625a;
+  }
+  body.viewer-susy.mobile .viewer-detail-block{
+    border-top-color:#e8d8c5;
+  }
+  body.viewer-susy.mobile .viewer-detail-block h4{
+    font-size:15px;
+    color:#8a613f;
+  }
+  body.viewer-susy.mobile .viewer-detail-card{
+    background:#fffaf3;
+    border-color:#e7d4bf;
+    box-shadow:none;
+  }
+  body.viewer-susy.mobile .viewer-detail-card small{
+    color:#7a6759;
+    font-size:11px;
+  }
+  body.viewer-susy.mobile .viewer-detail-card strong{
+    color:#1f1f1f;
+    font-size:14px;
+    line-height:1.15;
+  }
+  body.viewer-susy.mobile .viewer-detail-line{
+    background:#fff;
+    border-color:#ead8c5;
+  }
+  body.viewer-susy.mobile .viewer-detail-line span{
+    font-size:12px;
+    color:#2f2a25;
+  }
+  body.viewer-susy.mobile .viewer-detail-line span:last-child{
+    color:#a53d30;
+    font-size:13px;
+  }
+  body.viewer-susy.mobile table th,
+  body.viewer-susy.mobile table td{
+    font-size:14px !important;
+    font-weight:600;
+    line-height:1.25;
+  }
+  body.viewer-susy.mobile table.responsive tr{
+    background:#fffaf3;
+    border-color:#ead8c5;
+  }
+  body.viewer-susy.mobile table.responsive td::before{
+    color:#7a6759;
+  }
 
   @media (max-width:700px){
     .header{flex-direction:column; align-items:flex-start;}
@@ -608,6 +713,13 @@ function cargarProduccion(forceRefresh){
   });
 }
 
+function setViewerTheme_(cocina){
+  const body = document.body;
+  if (!body) return;
+  body.classList.toggle("viewer-susy", /susy/i.test(cocina || ""));
+  body.classList.toggle("viewer-tortillas", /tortillas/i.test(cocina || ""));
+}
+
 /* =====================================================
  renderResumenOperativoViewer_
  Descripcion: dibuja el resumen operativo de Tortillas La Má para el viewer.
@@ -677,7 +789,32 @@ function buildSusyPresentacionViewer_(rows){
   return html;
 }
 
+/* =====================================================
+ buildSusyLitrosViewer_
+ Descripcion: render compacto para litraje de Susy en móvil.
+===================================================== */
+function buildSusyLitrosViewer_(rows){
+  if (!rows || !rows.length) return "<p>Sin datos para los filtros seleccionados.</p>";
+  let html = "<div class='viewer-detail-block'>";
+  html += "<h4>Guisados / Salsas (litros)</h4>";
+  html += "<div class='viewer-detail-grid'>";
+  rows.forEach(function(r){
+    const tipo = r.tipo || "";
+    const receta = r.receta || "";
+    const litros = Number(r.litros || 0);
+    html += "<div class='viewer-detail-card'>";
+    html += "<small>" + tipo + "</small>";
+    html += "<strong>" + receta + "</strong>";
+    html += "<div class='viewer-detail-lines'>";
+    html += "<div class='viewer-detail-line'><span>Litros</span><span>" + litros.toFixed(2).replace(/\.00$/, "") + " L</span></div>";
+    html += "</div></div>";
+  });
+  html += "</div></div>";
+  return html;
+}
+
 function renderProduccion(data){
+  setViewerTheme_(data && data.cocina ? data.cocina : "");
   // Determina cocina del visor (para ocultar secciones no requeridas)
   const isTortillas = /tortillas/i.test((data.cocina || ""));
   const isSusy = /susy/i.test((data.cocina || ""));
@@ -752,19 +889,23 @@ function renderProduccion(data){
   }
 
   let htmlGui="<h3>Guisados / Salsas (litros)</h3>";
-  htmlGui+="<table><tr><th>Tipo</th><th>Receta</th><th>Litros</th></tr>";
-  if (data.guisados && data.guisados.length){
-    data.guisados.forEach(r=>{
-      const litrosVal = Number(r.litros || 0);
-      const highlightG = (r.tipo === "Guisado" && litrosVal >= 2) ? " style='background:#fff7ed;'" : "";
-      const highlightS = (r.tipo === "Salsa" && litrosVal >= 2) ? " style='background:#ecfeff;'" : "";
-      const highlight = highlightG || highlightS;
-      htmlGui+="<tr"+highlight+"><td>"+r.tipo+"</td><td>"+r.receta+"</td><td>"+litrosVal+" L</td></tr>";
-    });
+  if (isSusy && isMobileEffective()) {
+    htmlGui = buildSusyLitrosViewer_(data.guisados || []);
   } else {
-    htmlGui+="<tr><td colspan='3'>Sin guisados/salsas para los filtros.</td></tr>";
+    htmlGui+="<table><tr><th>Tipo</th><th>Receta</th><th>Litros</th></tr>";
+    if (data.guisados && data.guisados.length){
+      data.guisados.forEach(r=>{
+        const litrosVal = Number(r.litros || 0);
+        const highlightG = (r.tipo === "Guisado" && litrosVal >= 2) ? " style='background:#fff7ed;'" : "";
+        const highlightS = (r.tipo === "Salsa" && litrosVal >= 2) ? " style='background:#ecfeff;'" : "";
+        const highlight = highlightG || highlightS;
+        htmlGui+="<tr"+highlight+"><td>"+r.tipo+"</td><td>"+r.receta+"</td><td>"+litrosVal+" L</td></tr>";
+      });
+    } else {
+      htmlGui+="<tr><td colspan='3'>Sin guisados/salsas para los filtros.</td></tr>";
+    }
+    htmlGui+="</table>";
   }
-  htmlGui+="</table>";
 
   let htmlEmp="<h3>Empaque por guisado / salsa</h3>";
   htmlEmp+="<table><tr><th>Producto</th><th>Detalle</th><th>Presentación</th><th>Cantidad</th></tr>";

@@ -254,6 +254,44 @@ NOTAS
   body.mobile th, body.mobile td{font-size:34px; font-weight:700;}
   body.mobile .chip{font-size:16px; padding:6px 12px;}
   body.mobile .filters{display:none;}
+  body.mobile .viewer-detail-block{
+    margin-top:10px;
+    padding-top:10px;
+  }
+  body.mobile .viewer-detail-block h4{
+    font-size:14px;
+    margin-bottom:8px;
+  }
+  body.mobile .viewer-detail-grid{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  body.mobile .viewer-detail-card{
+    padding:10px;
+    border-radius:14px;
+  }
+  body.mobile .viewer-detail-card small{
+    font-size:11px;
+    line-height:1.2;
+    margin-bottom:2px;
+  }
+  body.mobile .viewer-detail-card strong{
+    font-size:15px;
+    line-height:1.15;
+    margin-bottom:6px;
+  }
+  body.mobile .viewer-detail-line{
+    padding:6px 8px;
+    border-radius:9px;
+    gap:8px;
+  }
+  body.mobile .viewer-detail-line span{
+    font-size:12px;
+    line-height:1.2;
+  }
+  body.mobile .viewer-detail-line span:last-child{
+    font-size:13px;
+  }
 
   @media (max-width:700px){
     .header{flex-direction:column; align-items:flex-start;}
@@ -686,6 +724,8 @@ function renderProduccion(data){
   let htmlPres="<h3>Producción por presentación</h3>";
   if (isTortillas && data.resumenOperativo && data.resumenOperativo.length){
     htmlPres = renderResumenOperativoViewer_(data.resumenOperativo);
+  } else if (isSusy && isMobileEffective()) {
+    htmlPres += buildSusyPresentacionViewer_(data.empaqueDetalle || []);
   } else if (isSusy) {
     htmlPres += "<table><tr><th>Tipo</th><th>Receta</th><th>Presentación</th><th>Cantidad</th></tr>";
     if (data.empaqueDetalle && data.empaqueDetalle.length){

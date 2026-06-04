@@ -415,7 +415,10 @@ function viewerCall_(action, args, handlers){
         else alert("Error del servidor:\n" + (err && err.message ? err.message : err));
       });
 
-    runner[action].apply(null, params);
+    if (typeof runner[action] !== "function") {
+      throw new Error("Acción no disponible en el visor: " + action);
+    }
+    runner[action].apply(runner, params);
   } catch (err) {
     if (onError) onError(err);
     else alert("Error inesperado en cliente");

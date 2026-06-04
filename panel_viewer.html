@@ -346,6 +346,16 @@ const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwOh48dsgpGVhCUbs42
             cocina: cocina || "",
             forceRefresh: !!forceRefresh
           }, this);
+        },
+
+        getViewerProduccion(semana, filtros, cocina, forceRefresh) {
+          callApi({
+            action: "obtenerViewerProduccion",
+            semana: semana,
+            filtros: filtros || {},
+            cocina: cocina || "",
+            forceRefresh: !!forceRefresh
+          }, this);
         }
       }
     }

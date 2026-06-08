@@ -631,50 +631,52 @@
     return; // Apps Script real
   }
 
+  function createRunner(successHandler, failureHandler) {
+    return {
+      _successHandler: successHandler || null,
+      _failureHandler: failureHandler || null,
+
+      withSuccessHandler(fn) {
+        return createRunner(fn, this._failureHandler);
+      },
+
+      withFailureHandler(fn) {
+        return createRunner(this._successHandler, fn);
+      },
+
+      obtenerDatosCliente(dia) {
+        callApi({ action: "obtenerCatalogoCliente", dia }, this);
+      },
+
+      obtenerDisponibilidadCliente(dia) {
+        callApi({ action: "obtenerDisponibilidadCliente", dia }, this);
+      },
+
+      registrarCliente(nombre, telefono, pin) {
+        callApi({ action: "registrarCliente", nombre, telefono, pin }, this);
+      },
+
+      iniciarSesionCliente(telefono, pin) {
+        callApi({ action: "iniciarSesionCliente", telefono, pin }, this);
+      },
+
+      obtenerSesionCliente(token) {
+        callApi({ action: "obtenerSesionCliente", token }, this);
+      },
+
+      cerrarSesionCliente(token) {
+        callApi({ action: "cerrarSesionCliente", token }, this);
+      },
+
+      crearCarritoCliente(cliente, dia, items, token) {
+        callApi({ action: "crearPedidoCliente", cliente, dia, items, token }, this);
+      }
+    };
+  }
+
   window.google = {
     script: {
-      run: {
-        _successHandler: null,
-        _failureHandler: null,
-
-        withSuccessHandler(fn) {
-          this._successHandler = fn;
-          return this;
-        },
-
-        withFailureHandler(fn) {
-          this._failureHandler = fn;
-          return this;
-        },
-
-        obtenerDatosCliente(dia) {
-          callApi({ action: "obtenerCatalogoCliente", dia }, this);
-        },
-
-        obtenerDisponibilidadCliente(dia) {
-          callApi({ action: "obtenerDisponibilidadCliente", dia }, this);
-        },
-
-        registrarCliente(nombre, telefono, pin) {
-          callApi({ action: "registrarCliente", nombre, telefono, pin }, this);
-        },
-
-        iniciarSesionCliente(telefono, pin) {
-          callApi({ action: "iniciarSesionCliente", telefono, pin }, this);
-        },
-
-        obtenerSesionCliente(token) {
-          callApi({ action: "obtenerSesionCliente", token }, this);
-        },
-
-        cerrarSesionCliente(token) {
-          callApi({ action: "cerrarSesionCliente", token }, this);
-        },
-
-        crearCarritoCliente(cliente, dia, items, token) {
-          callApi({ action: "crearPedidoCliente", cliente, dia, items, token }, this);
-        }
-      }
+      run: createRunner()
     }
   };
 
@@ -1032,25 +1034,30 @@
       mostrarAuthForm_("");
     }
 
-    function restaurarSesionCliente_(){
+    function restaurarSesionCliente_(done){
+      const finish = typeof done === "function" ? done : function(){};
       const token = getClienteToken_();
       if (!token) {
         aplicarSesionCliente_({ autenticado: false });
+        finish();
         return;
       }
       google.script.run
         .withFailureHandler(function(){
           saveClienteToken_("");
           aplicarSesionCliente_({ autenticado: false });
+          finish();
         })
         .withSuccessHandler(function(result){
           if (!result || result.autenticado === false) {
             saveClienteToken_("");
             aplicarSesionCliente_({ autenticado: false });
+            finish();
             return;
           }
           result.token = token;
           aplicarSesionCliente_(result);
+          finish();
         })
         .obtenerSesionCliente(token);
     }
@@ -1359,8 +1366,7 @@ function updateDisponibilidadSalsa_(){
       { label: "Gorditas", aliases: ["Gorditas", "Gordita"] }
     ];
 
-    restaurarSesionCliente_();
-    cargarCatalogo_();
+    restaurarSesionCliente_(cargarCatalogo_);
 
     setInterval(function(){
       if (document.hidden) return;

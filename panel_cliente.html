@@ -1109,7 +1109,7 @@
           aplicarSesionCliente_(result);
           const pinInput = document.getElementById("loginPin");
           if (pinInput) pinInput.value = "";
-          mostrarMensaje_("Bienvenido, " + ((result && result.cliente && result.cliente.nombre) || "cliente") + ".", "ok");
+          mostrarMensaje_("Hola, " + ((result && result.cliente && result.cliente.nombre) || "cliente") + ".", "ok");
         })
         .iniciarSesionCliente(telefono, pin);
     }

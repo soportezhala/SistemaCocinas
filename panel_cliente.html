@@ -987,6 +987,8 @@
     let refrescandoDisponibilidad_ = false;
     let sesionCliente_ = null;
     const CLIENT_SESSION_STORAGE_KEY = "sistema_cocina_cliente_token";
+    const CLIENT_CATALOG_STORAGE_PREFIX = "sistema_cocina_catalogo_";
+    const CLIENT_CATALOG_MAX_AGE_MS = 5 * 60 * 1000;
 
     function getClienteToken_(){
       try { return localStorage.getItem(CLIENT_SESSION_STORAGE_KEY) || ""; }
@@ -997,6 +999,34 @@
       try {
         if (token) localStorage.setItem(CLIENT_SESSION_STORAGE_KEY, token);
         else localStorage.removeItem(CLIENT_SESSION_STORAGE_KEY);
+      } catch (err) {}
+    }
+
+    function getCatalogCacheKey_(dia){
+      return CLIENT_CATALOG_STORAGE_PREFIX + String(dia || "").trim().toLowerCase();
+    }
+
+    function readCatalogCache_(dia){
+      try {
+        const raw = localStorage.getItem(getCatalogCacheKey_(dia));
+        if (!raw) return null;
+        const saved = JSON.parse(raw);
+        if (!saved || !saved.data || (Date.now() - Number(saved.timestamp || 0)) > CLIENT_CATALOG_MAX_AGE_MS) {
+          localStorage.removeItem(getCatalogCacheKey_(dia));
+          return null;
+        }
+        return saved.data;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function writeCatalogCache_(dia, data){
+      try {
+        localStorage.setItem(getCatalogCacheKey_(dia), JSON.stringify({
+          timestamp: Date.now(),
+          data: data
+        }));
       } catch (err) {}
     }
 
@@ -1366,7 +1396,10 @@ function updateDisponibilidadSalsa_(){
       { label: "Gorditas", aliases: ["Gorditas", "Gordita"] }
     ];
 
-    restaurarSesionCliente_(cargarCatalogo_);
+    // Catálogo y sesión son independientes: cargarlos en paralelo evita sumar
+    // dos viajes consecutivos a Apps Script al abrir el panel.
+    cargarCatalogo_();
+    restaurarSesionCliente_();
 
     setInterval(function(){
       if (document.hidden) return;
@@ -1387,35 +1420,46 @@ function updateDisponibilidadSalsa_(){
 
     function cargarCatalogo_(){
       const dia = document.getElementById("dia") ? document.getElementById("dia").value : "";
+      const cached = readCatalogCache_(dia);
+      if (cached) {
+        aplicarCatalogoCliente_(cached, true);
+      }
       google.script.run
         .withFailureHandler(function(err){
-          mostrarMensaje_("No se pudo cargar el catalogo: " + errorText_(err), "error");
+          if (!cached) {
+            mostrarMensaje_("No se pudo cargar el catalogo: " + errorText_(err), "error");
+          }
         })
       .withSuccessHandler(function(data){
-        catalogoCliente = data || {};
-        ventanaPedido = (catalogoCliente || {}).ventanaPedido || { abierta: true };
-        ultimaActualizacionDisponibilidad_ = Date.now();
-        hydrateClientes_((catalogoCliente || {}).clientes || []);
-        renderMenuInfo_();
-        renderTortillas_();
-        renderGuisadoOptions_();
-        renderSalsaOptions_();
-        updatePedidoAvailabilityUI_();
-
-        // ✅ Renderizar encabezados de cocinas
-        const headerTlm = document.getElementById("header-cocina-tlm");
-        if (headerTlm) {
-          headerTlm.innerHTML = renderCocinaHeader_("Tortillas La Ma");
-        }
-
-        const headerSusy = document.getElementById("header-cocina-susy");
-        if (headerSusy) {
-          headerSusy.innerHTML = renderCocinaHeader_("La Cocina de Susy");
-          }
-
-        mostrarMensaje_("", "");
+        writeCatalogCache_(dia, data || {});
+        aplicarCatalogoCliente_(data, false);
       })
         .obtenerDatosCliente(dia);
+    }
+
+    function aplicarCatalogoCliente_(data, fromCache){
+      catalogoCliente = data || {};
+      if (fromCache) {
+        // El catálogo puede mostrarse de inmediato, pero el inventario debe
+        // esperar la respuesta actual para no presentar existencias antiguas.
+        catalogoCliente = Object.assign({}, catalogoCliente, { availability: null });
+      }
+      ventanaPedido = (catalogoCliente || {}).ventanaPedido || { abierta: true };
+      if (!fromCache) ultimaActualizacionDisponibilidad_ = Date.now();
+      hydrateClientes_((catalogoCliente || {}).clientes || []);
+      renderMenuInfo_();
+      renderTortillas_();
+      renderGuisadoOptions_();
+      renderSalsaOptions_();
+      updatePedidoAvailabilityUI_();
+
+      const headerTlm = document.getElementById("header-cocina-tlm");
+      if (headerTlm) headerTlm.innerHTML = renderCocinaHeader_("Tortillas La Ma");
+
+      const headerSusy = document.getElementById("header-cocina-susy");
+      if (headerSusy) headerSusy.innerHTML = renderCocinaHeader_("La Cocina de Susy");
+
+      if (!fromCache) mostrarMensaje_("", "");
     }
 function renderCocinaHeader_(nombreCocina) {
   const ui = COCINAS_UI[nombreCocina];

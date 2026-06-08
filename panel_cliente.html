@@ -131,6 +131,76 @@
       align-content: start;
     }
 
+    .auth-box {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: linear-gradient(135deg, #f7fbfa, #fffaf3);
+    }
+
+    .auth-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .auth-heading strong {
+      font-size: .96rem;
+    }
+
+    .auth-actions,
+    .auth-form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .auth-link {
+      border: 0;
+      background: transparent;
+      color: var(--teal);
+      padding: 4px 0;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .auth-form {
+      display: none;
+      gap: 10px;
+    }
+
+    .auth-form.show {
+      display: grid;
+    }
+
+    .auth-user {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .auth-user.show {
+      display: flex;
+    }
+
+    .auth-status {
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.35;
+    }
+
+    .btn.compact {
+      min-height: 36px;
+      padding: 7px 12px;
+      font-size: .84rem;
+      box-shadow: none;
+    }
+
     .field label {
       display: block;
       color: var(--muted);
@@ -585,8 +655,24 @@
           callApi({ action: "obtenerDisponibilidadCliente", dia }, this);
         },
 
-        crearCarritoCliente(cliente, dia, items) {
-          callApi({ action: "crearPedidoCliente", cliente, dia, items }, this);
+        registrarCliente(nombre, telefono, pin) {
+          callApi({ action: "registrarCliente", nombre, telefono, pin }, this);
+        },
+
+        iniciarSesionCliente(telefono, pin) {
+          callApi({ action: "iniciarSesionCliente", telefono, pin }, this);
+        },
+
+        obtenerSesionCliente(token) {
+          callApi({ action: "obtenerSesionCliente", token }, this);
+        },
+
+        cerrarSesionCliente(token) {
+          callApi({ action: "cerrarSesionCliente", token }, this);
+        },
+
+        crearCarritoCliente(cliente, dia, items, token) {
+          callApi({ action: "crearPedidoCliente", cliente, dia, items, token }, this);
         }
       }
     }
@@ -635,6 +721,62 @@
         </div>
 
         <div class="identity-card">
+          <div class="auth-box">
+            <div id="authGuest">
+              <div class="auth-heading">
+                <strong>¿Ya tienes cuenta?</strong>
+                <span class="auth-status">Opcional</span>
+              </div>
+              <div class="auth-actions">
+                <button class="btn primary compact" type="button" onclick="mostrarAuthForm_('login')">Iniciar sesión</button>
+                <button class="btn ghost compact" type="button" onclick="mostrarAuthForm_('registro')">Crear cuenta</button>
+              </div>
+              <div class="auth-status">También puedes continuar como invitado escribiendo tu nombre.</div>
+            </div>
+
+            <div id="authUser" class="auth-user">
+              <div>
+                <strong id="authUserName">Cliente</strong>
+                <div class="auth-status">Sesión iniciada en este dispositivo.</div>
+              </div>
+              <button class="btn ghost compact" type="button" onclick="cerrarSesionCliente_()">Cerrar sesión</button>
+            </div>
+
+            <div id="authLoginForm" class="auth-form">
+              <div class="field">
+                <label for="loginTelefono">Teléfono</label>
+                <input id="loginTelefono" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10 dígitos">
+              </div>
+              <div class="field">
+                <label for="loginPin">PIN</label>
+                <input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="6" placeholder="4 a 6 números">
+              </div>
+              <div class="auth-form-actions">
+                <button id="btnLoginCliente" class="btn primary compact" type="button" onclick="iniciarSesionCliente_()">Entrar</button>
+                <button class="btn ghost compact" type="button" onclick="mostrarAuthForm_('')">Cancelar</button>
+              </div>
+            </div>
+
+            <div id="authRegisterForm" class="auth-form">
+              <div class="field">
+                <label for="registroNombre">Nombre completo</label>
+                <input id="registroNombre" type="text" autocomplete="name" placeholder="Tu nombre">
+              </div>
+              <div class="field">
+                <label for="registroTelefono">Teléfono</label>
+                <input id="registroTelefono" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10 dígitos">
+              </div>
+              <div class="field">
+                <label for="registroPin">Crea un PIN</label>
+                <input id="registroPin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="4 a 6 números">
+              </div>
+              <div class="auth-form-actions">
+                <button id="btnRegistroCliente" class="btn primary compact" type="button" onclick="registrarCliente_()">Crear cuenta</button>
+                <button class="btn ghost compact" type="button" onclick="mostrarAuthForm_('')">Cancelar</button>
+              </div>
+            </div>
+          </div>
+
           <div class="field">
             <label for="cliente">Tu nombre</label>
             <input
@@ -841,6 +983,138 @@
     let ventanaPedido = { abierta: true };
     let ultimaActualizacionDisponibilidad_ = 0;
     let refrescandoDisponibilidad_ = false;
+    let sesionCliente_ = null;
+    const CLIENT_SESSION_STORAGE_KEY = "sistema_cocina_cliente_token";
+
+    function getClienteToken_(){
+      try { return localStorage.getItem(CLIENT_SESSION_STORAGE_KEY) || ""; }
+      catch (err) { return ""; }
+    }
+
+    function saveClienteToken_(token){
+      try {
+        if (token) localStorage.setItem(CLIENT_SESSION_STORAGE_KEY, token);
+        else localStorage.removeItem(CLIENT_SESSION_STORAGE_KEY);
+      } catch (err) {}
+    }
+
+    function mostrarAuthForm_(mode){
+      const login = document.getElementById("authLoginForm");
+      const registro = document.getElementById("authRegisterForm");
+      if (login) login.classList.toggle("show", mode === "login");
+      if (registro) registro.classList.toggle("show", mode === "registro");
+    }
+
+    function aplicarSesionCliente_(result){
+      const payload = result || {};
+      const cliente = payload.cliente || {};
+      sesionCliente_ = payload.autenticado === false || !cliente.nombre
+        ? null
+        : {
+            token: payload.token || getClienteToken_(),
+            idCliente: cliente.idCliente || "",
+            nombre: cliente.nombre || "",
+            expira: payload.expira || ""
+          };
+
+      const guest = document.getElementById("authGuest");
+      const user = document.getElementById("authUser");
+      const input = document.getElementById("cliente");
+      const userName = document.getElementById("authUserName");
+      const loggedIn = !!sesionCliente_;
+      if (guest) guest.style.display = loggedIn ? "none" : "";
+      if (user) user.classList.toggle("show", loggedIn);
+      if (userName) userName.textContent = loggedIn ? sesionCliente_.nombre : "Cliente";
+      if (input) {
+        input.readOnly = loggedIn;
+        input.value = loggedIn ? sesionCliente_.nombre : input.value;
+      }
+      mostrarAuthForm_("");
+    }
+
+    function restaurarSesionCliente_(){
+      const token = getClienteToken_();
+      if (!token) {
+        aplicarSesionCliente_({ autenticado: false });
+        return;
+      }
+      google.script.run
+        .withFailureHandler(function(){
+          saveClienteToken_("");
+          aplicarSesionCliente_({ autenticado: false });
+        })
+        .withSuccessHandler(function(result){
+          if (!result || result.autenticado === false) {
+            saveClienteToken_("");
+            aplicarSesionCliente_({ autenticado: false });
+            return;
+          }
+          result.token = token;
+          aplicarSesionCliente_(result);
+        })
+        .obtenerSesionCliente(token);
+    }
+
+    function iniciarSesionCliente_(){
+      const telefono = String((document.getElementById("loginTelefono") || {}).value || "").trim();
+      const pin = String((document.getElementById("loginPin") || {}).value || "").trim();
+      const btn = document.getElementById("btnLoginCliente");
+      if (!telefono || !pin) return mostrarMensaje_("Escribe tu teléfono y PIN.", "error");
+      if (btn) btn.disabled = true;
+      google.script.run
+        .withFailureHandler(function(err){
+          if (btn) btn.disabled = false;
+          mostrarMensaje_(errorText_(err), "error");
+        })
+        .withSuccessHandler(function(result){
+          if (btn) btn.disabled = false;
+          saveClienteToken_(result && result.token ? result.token : "");
+          aplicarSesionCliente_(result);
+          const pinInput = document.getElementById("loginPin");
+          if (pinInput) pinInput.value = "";
+          mostrarMensaje_("Bienvenido, " + ((result && result.cliente && result.cliente.nombre) || "cliente") + ".", "ok");
+        })
+        .iniciarSesionCliente(telefono, pin);
+    }
+
+    function registrarCliente_(){
+      const nombre = String((document.getElementById("registroNombre") || {}).value || "").trim();
+      const telefono = String((document.getElementById("registroTelefono") || {}).value || "").trim();
+      const pin = String((document.getElementById("registroPin") || {}).value || "").trim();
+      const btn = document.getElementById("btnRegistroCliente");
+      if (!nombre || !telefono || !pin) return mostrarMensaje_("Completa nombre, teléfono y PIN.", "error");
+      if (btn) btn.disabled = true;
+      google.script.run
+        .withFailureHandler(function(err){
+          if (btn) btn.disabled = false;
+          mostrarMensaje_(errorText_(err), "error");
+        })
+        .withSuccessHandler(function(result){
+          if (btn) btn.disabled = false;
+          saveClienteToken_(result && result.token ? result.token : "");
+          aplicarSesionCliente_(result);
+          mostrarMensaje_("Tu cuenta quedó creada y la sesión está iniciada.", "ok");
+        })
+        .registrarCliente(nombre, telefono, pin);
+    }
+
+    function cerrarSesionCliente_(){
+      const token = getClienteToken_();
+      saveClienteToken_("");
+      sesionCliente_ = null;
+      const input = document.getElementById("cliente");
+      if (input) {
+        input.readOnly = false;
+        input.value = "";
+      }
+      aplicarSesionCliente_({ autenticado: false });
+      mostrarMensaje_("Cerramos la sesión en este dispositivo.", "ok");
+      if (!token) return;
+      google.script.run
+        .withFailureHandler(function(){})
+        .withSuccessHandler(function(){})
+        .cerrarSesionCliente(token);
+    }
 
     /* ===============================
    IDENTIDAD VISUAL DE COCINAS
@@ -1085,6 +1359,7 @@ function updateDisponibilidadSalsa_(){
       { label: "Gorditas", aliases: ["Gorditas", "Gordita"] }
     ];
 
+    restaurarSesionCliente_();
     cargarCatalogo_();
 
     setInterval(function(){
@@ -1932,7 +2207,7 @@ function renderCocinaHeader_(nombreCocina) {
           btn.disabled = false;
           carrito = [];
           renderCarrito_();
-          document.getElementById("cliente").value = "";
+          document.getElementById("cliente").value = sesionCliente_ ? sesionCliente_.nombre : "";
           const folio = res && res.folioCarrito ? res.folioCarrito : "";
 
 mostrarMensaje_(
@@ -1942,7 +2217,7 @@ mostrarMensaje_(
   "ok"
 );
         })
-        .crearCarritoCliente(cliente, dia, payload);
+        .crearCarritoCliente(cliente, dia, payload, getClienteToken_());
     }
 
     function mostrarMensaje_(texto, tipo){

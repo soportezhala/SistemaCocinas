@@ -821,6 +821,7 @@
       <div id="menuInfo" class="notice tip"></div>
       <div id="comboTip" class="notice tip"></div>
       <div id="promoTip" class="notice ok"></div>
+      <div id="variedadTip" class="notice tip"></div>
 
       <div id="carritoItems" class="cart-items">
         <div class="empty">Aún no has agregado productos.</div>
@@ -834,6 +835,10 @@
         <div id="descuentoRow" class="total-line discount" style="display:none;">
           <span>Paquete Familiar 4 Medios</span>
           <span id="descuentoPromo">-$0.00</span>
+        </div>
+        <div id="descuentoVariedadRow" class="total-line discount" style="display:none;">
+          <span>Combo Variedad La Má</span>
+          <span id="descuentoVariedad">-$0.00</span>
         </div>
         <div class="total-line final">
           <span>Total aproximado</span>
@@ -1109,7 +1114,7 @@
           aplicarSesionCliente_(result);
           const pinInput = document.getElementById("loginPin");
           if (pinInput) pinInput.value = "";
-          mostrarMensaje_("Hola, " + ((result && result.cliente && result.cliente.nombre) || "cliente") + ".", "ok");
+          mostrarMensaje_("Bienvenido, " + ((result && result.cliente && result.cliente.nombre) || "cliente") + ".", "ok");
         })
         .iniciarSesionCliente(telefono, pin);
     }
@@ -1762,13 +1767,15 @@ function renderCocinaHeader_(nombreCocina) {
       const target = document.getElementById("carritoItems");
       const combo = detectarComboSugerido_();
       const promo = detectarPaqueteFamiliar_();
+      const variedad = detectarComboVariedad_();
       let total = 0;
       mostrarComboTip_(combo);
       mostrarPromoTip_(promo);
+      mostrarVariedadTip_(variedad);
 
       if (!carrito.length) {
         target.innerHTML = "<div class='empty'>Aun no has agregado productos.</div>";
-        setCarritoTotales_(0, 0);
+        setCarritoTotales_(0, 0, 0);
         document.getElementById("total").textContent = money_(0);
         updateDisponibilidadGuisado_();
         updateDisponibilidadSalsa_();
@@ -1795,32 +1802,40 @@ function renderCocinaHeader_(nombreCocina) {
           + "<div class='cart-actions'><strong>" + money_(subtotal) + "</strong>" + botonQuitar + "</div>"
           + "</div>";
       }).join("");
-      setCarritoTotales_(total, promo && promo.aplica ? promo.descuentoTotal : 0);
+      setCarritoTotales_(
+        total,
+        promo && promo.aplica ? promo.descuentoTotal : 0,
+        variedad && variedad.aplica ? variedad.descuentoTotal : 0
+      );
       updateDisponibilidadGuisado_();
       updateDisponibilidadSalsa_();
       mostrarMensaje_("", "");
     }
 
-    function setCarritoTotales_(subtotal, descuento){
+    function setCarritoTotales_(subtotal, descuento, descuentoVariedad){
       const subtotalRow = document.getElementById("subtotalRow");
       const descuentoRow = document.getElementById("descuentoRow");
+      const variedadRow = document.getElementById("descuentoVariedadRow");
       const subtotalEl = document.getElementById("subtotal");
       const descuentoEl = document.getElementById("descuentoPromo");
+      const variedadEl = document.getElementById("descuentoVariedad");
       const totalEl = document.getElementById("total");
       const gross = Number(subtotal || 0);
       const discount = Math.max(0, Number(descuento || 0));
-      const totalFinal = Math.max(0, round_(gross - discount, 2));
-      if (discount > 0) {
+      const varietyDiscount = Math.max(0, Number(descuentoVariedad || 0));
+      const totalDiscount = discount + varietyDiscount;
+      const totalFinal = Math.max(0, round_(gross - totalDiscount, 2));
+      if (totalDiscount > 0) {
         subtotalRow.style.display = "";
-        descuentoRow.style.display = "";
         subtotalEl.textContent = money_(gross);
-        descuentoEl.textContent = "-" + money_(discount);
       } else {
         subtotalRow.style.display = "none";
-        descuentoRow.style.display = "none";
         subtotalEl.textContent = money_(0);
-        descuentoEl.textContent = "-" + money_(0);
       }
+      descuentoRow.style.display = discount > 0 ? "" : "none";
+      descuentoEl.textContent = "-" + money_(discount);
+      variedadRow.style.display = varietyDiscount > 0 ? "" : "none";
+      variedadEl.textContent = "-" + money_(varietyDiscount);
       totalEl.textContent = money_(totalFinal);
     }
 
@@ -1921,6 +1936,76 @@ function renderCocinaHeader_(nombreCocina) {
         + "<div><strong>Descuento total:</strong> " + money_(promo.descuentoTotal) + " &nbsp; <strong>Total con promo:</strong> " + money_(promo.totalFinal) + "</div>"
         + "</div>";
       el.className = "notice ok show";
+    }
+
+    function detectarComboVariedad_(){
+      const recetas = {};
+      let tieneProductoLaMa = false;
+      carrito.forEach(function(item){
+        const producto = norm_(item && item.producto || "");
+        const cantidad = Math.max(0, Number(item && item.cantidad || 0));
+        if (!(cantidad > 0)) return;
+
+        if (["tortilla", "sope", "huarache", "gordita", "gorditas"].indexOf(producto) >= 0) {
+          tieneProductoLaMa = true;
+        }
+        if (producto === "guisado") {
+          if (norm_(item.tipo || "").indexOf("complemento") >= 0) return;
+          const receta = String(item.receta || item.nombre || "").trim();
+          if (receta) recetas[norm_(receta)] = receta;
+          return;
+        }
+        if (producto === "combo") {
+          const origen = item.comboOrigen || {};
+          const recetaCombo = String(item.comboGuisado || origen.guisado || "").trim();
+          const tipoCombo = String(origen.guisadoTipo || "").trim();
+          if (recetaCombo && norm_(tipoCombo).indexOf("complemento") < 0) {
+            recetas[norm_(recetaCombo)] = recetaCombo;
+          }
+          if (String(origen.tortillaPresentacion || "").trim() || String(item.comboTortillas || "").trim()) {
+            tieneProductoLaMa = true;
+          }
+        }
+      });
+
+      const distintos = Object.keys(recetas).length;
+      const descuento = tieneProductoLaMa
+        ? (distintos >= 5 ? 20 : (distintos === 4 ? 15 : (distintos === 3 ? 10 : 0)))
+        : 0;
+      let mensaje = "";
+      if (!tieneProductoLaMa) {
+        mensaje = "Agrega un producto La Má para activar el descuento por variedad.";
+      } else if (distintos < 3) {
+        const faltan = 3 - distintos;
+        mensaje = "Te falta" + (faltan === 1 ? " 1 guisado distinto" : "n " + faltan + " guisados distintos") + " para obtener $10 de descuento.";
+      } else if (distintos === 3) {
+        mensaje = "Ya obtuviste $10 de descuento. Agrega 1 guisado distinto para llegar a $15.";
+      } else if (distintos === 4) {
+        mensaje = "Ya obtuviste $15 de descuento. Agrega 1 guisado distinto para llegar a $20.";
+      } else {
+        mensaje = "Ya obtuviste el descuento máximo Combo Variedad La Má: $20.";
+      }
+      return {
+        aplica: descuento > 0,
+        nombrePromo: "Combo Variedad La Má",
+        descuentoTotal: descuento,
+        guisadosDistintos: distintos,
+        tieneProductoLaMa: tieneProductoLaMa,
+        mensaje: mensaje
+      };
+    }
+
+    function mostrarVariedadTip_(promo){
+      const el = document.getElementById("variedadTip");
+      if (!el) return;
+      if (!carrito.length) {
+        el.className = "notice tip";
+        el.textContent = "";
+        return;
+      }
+      el.innerHTML = "<div class='notice-content'><strong>Combo Variedad La Má</strong><br>" +
+        escapeHtml_(promo && promo.mensaje ? promo.mensaje : "") + "</div>";
+      el.className = "notice " + (promo && promo.aplica ? "ok" : "tip") + " show";
     }
 
     function buildComboCandidateForGuisado_(guisadoItem){

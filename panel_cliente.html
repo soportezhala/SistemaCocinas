@@ -652,6 +652,10 @@
         callApi({ action: "obtenerDisponibilidadCliente", dia }, this);
       },
 
+      obtenerPromocionFrecuenteCliente(cliente, token) {
+        callApi({ action: "obtenerPromocionFrecuenteCliente", cliente, token }, this);
+      },
+
       registrarCliente(nombre, telefono, pin) {
         callApi({ action: "registrarCliente", nombre, telefono, pin }, this);
       },
@@ -787,7 +791,7 @@
               autocomplete="name"
               list="clientesSugeridos"
               placeholder="Ej. Angelica Hernandez"
-              onblur="sincronizarClienteNombre_()"
+              onblur="sincronizarClienteNombre_(); cargarPromocionFrecuenteCliente_()"
             >
             <datalist id="clientesSugeridos"></datalist>
             <div class="helper-text">
@@ -833,12 +837,8 @@
           <span id="subtotal">$0.00</span>
         </div>
         <div id="descuentoRow" class="total-line discount" style="display:none;">
-          <span>Paquete Familiar 4 Medios</span>
+          <span id="descuentoPromoNombre">Promoción</span>
           <span id="descuentoPromo">-$0.00</span>
-        </div>
-        <div id="descuentoVariedadRow" class="total-line discount" style="display:none;">
-          <span>Combo Variedad La Má</span>
-          <span id="descuentoVariedad">-$0.00</span>
         </div>
         <div class="total-line final">
           <span>Total aproximado</span>
@@ -991,6 +991,7 @@
     let ultimaActualizacionDisponibilidad_ = 0;
     let refrescandoDisponibilidad_ = false;
     let sesionCliente_ = null;
+    let promocionFrecuenteCliente_ = null;
     const CLIENT_SESSION_STORAGE_KEY = "sistema_cocina_cliente_token";
     const CLIENT_CATALOG_STORAGE_PREFIX = "sistema_cocina_catalogo_";
     const CLIENT_CATALOG_MAX_AGE_MS = 5 * 60 * 1000;
@@ -1067,6 +1068,26 @@
         input.value = loggedIn ? sesionCliente_.nombre : input.value;
       }
       mostrarAuthForm_("");
+      cargarPromocionFrecuenteCliente_();
+    }
+
+    function cargarPromocionFrecuenteCliente_(){
+      const cliente = sesionCliente_ ? sesionCliente_.nombre : String((document.getElementById("cliente") || {}).value || "").trim();
+      if (!cliente) {
+        promocionFrecuenteCliente_ = null;
+        if (carrito.length) renderCarrito_();
+        return;
+      }
+      google.script.run
+        .withFailureHandler(function(){
+          promocionFrecuenteCliente_ = null;
+          if (carrito.length) renderCarrito_();
+        })
+        .withSuccessHandler(function(info){
+          promocionFrecuenteCliente_ = info || null;
+          if (carrito.length) renderCarrito_();
+        })
+        .obtenerPromocionFrecuenteCliente(cliente, getClienteToken_());
     }
 
     function restaurarSesionCliente_(done){
@@ -1144,6 +1165,7 @@
       const token = getClienteToken_();
       saveClienteToken_("");
       sesionCliente_ = null;
+      promocionFrecuenteCliente_ = null;
       const input = document.getElementById("cliente");
       if (input) {
         input.readOnly = false;
@@ -1766,16 +1788,19 @@ function renderCocinaHeader_(nombreCocina) {
     function renderCarrito_(){
       const target = document.getElementById("carritoItems");
       const combo = detectarComboSugerido_();
-      const promo = detectarPaqueteFamiliar_();
-      const variedad = detectarComboVariedad_();
+      const promociones = detectarPromocionesCliente_();
+      const promo = seleccionarMejorPromocionCliente_(promociones);
       let total = 0;
       mostrarComboTip_(combo);
-      mostrarPromoTip_(promo);
-      mostrarVariedadTip_(variedad);
+      mostrarPromoTip_(promo, promociones);
+      mostrarVariedadTip_(
+        promociones.find(function(item){ return item.kind === "PROMO_VARIEDAD"; }),
+        promo
+      );
 
       if (!carrito.length) {
         target.innerHTML = "<div class='empty'>Aun no has agregado productos.</div>";
-        setCarritoTotales_(0, 0, 0);
+        setCarritoTotales_(0, null);
         document.getElementById("total").textContent = money_(0);
         updateDisponibilidadGuisado_();
         updateDisponibilidadSalsa_();
@@ -1804,26 +1829,22 @@ function renderCocinaHeader_(nombreCocina) {
       }).join("");
       setCarritoTotales_(
         total,
-        promo && promo.aplica ? promo.descuentoTotal : 0,
-        variedad && variedad.aplica ? variedad.descuentoTotal : 0
+        promo
       );
       updateDisponibilidadGuisado_();
       updateDisponibilidadSalsa_();
       mostrarMensaje_("", "");
     }
 
-    function setCarritoTotales_(subtotal, descuento, descuentoVariedad){
+    function setCarritoTotales_(subtotal, promo){
       const subtotalRow = document.getElementById("subtotalRow");
       const descuentoRow = document.getElementById("descuentoRow");
-      const variedadRow = document.getElementById("descuentoVariedadRow");
       const subtotalEl = document.getElementById("subtotal");
       const descuentoEl = document.getElementById("descuentoPromo");
-      const variedadEl = document.getElementById("descuentoVariedad");
+      const descuentoNombre = document.getElementById("descuentoPromoNombre");
       const totalEl = document.getElementById("total");
       const gross = Number(subtotal || 0);
-      const discount = Math.max(0, Number(descuento || 0));
-      const varietyDiscount = Math.max(0, Number(descuentoVariedad || 0));
-      const totalDiscount = discount + varietyDiscount;
+      const totalDiscount = promo && promo.aplica ? Math.max(0, Number(promo.descuentoTotal || 0)) : 0;
       const totalFinal = Math.max(0, round_(gross - totalDiscount, 2));
       if (totalDiscount > 0) {
         subtotalRow.style.display = "";
@@ -1832,10 +1853,9 @@ function renderCocinaHeader_(nombreCocina) {
         subtotalRow.style.display = "none";
         subtotalEl.textContent = money_(0);
       }
-      descuentoRow.style.display = discount > 0 ? "" : "none";
-      descuentoEl.textContent = "-" + money_(discount);
-      variedadRow.style.display = varietyDiscount > 0 ? "" : "none";
-      variedadEl.textContent = "-" + money_(varietyDiscount);
+      descuentoRow.style.display = totalDiscount > 0 ? "" : "none";
+      descuentoEl.textContent = "-" + money_(totalDiscount);
+      if (descuentoNombre) descuentoNombre.textContent = promo && promo.nombrePromo ? promo.nombrePromo : "Promoción";
       totalEl.textContent = money_(totalFinal);
     }
 
@@ -1911,6 +1931,7 @@ function renderCocinaHeader_(nombreCocina) {
       }, 0);
       return {
         aplica: descuentoTotal > 0,
+        kind: "PROMO_FAMILIAR",
         nombrePromo: "Paquete Familiar 4 Medios",
         bloquesTotal: blocks.length,
         descuentoTotal: round_(descuentoTotal, 2),
@@ -1920,20 +1941,23 @@ function renderCocinaHeader_(nombreCocina) {
       };
     }
 
-    function mostrarPromoTip_(promo){
+    function mostrarPromoTip_(promo, candidatos){
       const el = document.getElementById("promoTip");
       if (!promo || !promo.aplica) {
-        el.className = "notice ok";
-        el.textContent = "";
+        const prioridadSugerencia = ["PROMO_FRECUENTE", "PROMO_VARIEDAD", "PROMO_COMPLETA", "PROMO_MIX_LAMA"];
+        const sugerenciaPromo = prioridadSugerencia.map(function(kind){
+          return (candidatos || []).find(function(item){ return item && item.kind === kind && item.mensaje; });
+        }).filter(Boolean)[0];
+        const sugerencia = sugerenciaPromo ? sugerenciaPromo.mensaje : "";
+        el.className = sugerencia ? "notice tip show" : "notice tip";
+        el.innerHTML = sugerencia ? ("<div class='notice-content'><strong>Promociones disponibles</strong><br>" + escapeHtml_(sugerencia) + "</div>") : "";
         return;
       }
-      const extra = promo.breakdown && promo.breakdown.length ? ("<div><strong>Aplica en:</strong> " + escapeHtml_(promo.breakdown.join(" | ")) + "</div>") : "";
       el.innerHTML = ""
         + "<div class='notice-content'>"
         + "<div><strong>" + escapeHtml_(promo.nombrePromo) + " aplicado.</strong><br>"
-        + "Detectamos " + Number(promo.bloquesTotal || 0) + " bloque(s) de 4 medios para ayudarte a ahorrar.</div>"
-        + extra
-        + "<div><strong>Descuento total:</strong> " + money_(promo.descuentoTotal) + " &nbsp; <strong>Total con promo:</strong> " + money_(promo.totalFinal) + "</div>"
+        + "Elegimos automáticamente la promoción que te genera el mayor descuento.</div>"
+        + "<div><strong>Descuento:</strong> " + money_(promo.descuentoTotal) + "</div>"
         + "</div>";
       el.className = "notice ok show";
     }
@@ -1955,17 +1979,8 @@ function renderCocinaHeader_(nombreCocina) {
           if (receta) recetas[norm_(receta)] = receta;
           return;
         }
-        if (producto === "combo") {
-          const origen = item.comboOrigen || {};
-          const recetaCombo = String(item.comboGuisado || origen.guisado || "").trim();
-          const tipoCombo = String(origen.guisadoTipo || "").trim();
-          if (recetaCombo && norm_(tipoCombo).indexOf("complemento") < 0) {
-            recetas[norm_(recetaCombo)] = recetaCombo;
-          }
-          if (String(origen.tortillaPresentacion || "").trim() || String(item.comboTortillas || "").trim()) {
-            tieneProductoLaMa = true;
-          }
-        }
+        // Un combo ya tiene su propio precio preferencial; sus componentes
+        // no vuelven a generar una promoción adicional.
       });
 
       const distintos = Object.keys(recetas).length;
@@ -1987,6 +2002,7 @@ function renderCocinaHeader_(nombreCocina) {
       }
       return {
         aplica: descuento > 0,
+        kind: "PROMO_VARIEDAD",
         nombrePromo: "Combo Variedad La Má",
         descuentoTotal: descuento,
         guisadosDistintos: distintos,
@@ -1995,10 +2011,107 @@ function renderCocinaHeader_(nombreCocina) {
       };
     }
 
-    function mostrarVariedadTip_(promo){
+    function getPresentacionLitrosCliente_(presentacion){
+      const key = norm_(presentacion);
+      if (key.indexOf("1 litro") >= 0) return 1;
+      if (key.indexOf("1/2 litro") >= 0) return 0.5;
+      if (key.indexOf("vaso 10oz") >= 0) return 0.295;
+      return 0;
+    }
+
+    function detectarCompletaTuComida_(){
+      let litros = 0;
+      let tieneComplemento = false;
+      carrito.forEach(function(item){
+        const producto = norm_(item && item.producto || "");
+        const cantidad = Math.max(0, Number(item && item.cantidad || 0));
+        if (!(cantidad > 0) || producto === "combo") return;
+        if (producto === "guisado" && norm_(item.tipo || "").indexOf("complemento") < 0) {
+          litros += getPresentacionLitrosCliente_(item.presentacion) * cantidad;
+        }
+        if (producto === "salsa" || producto === "tortilla") tieneComplemento = true;
+      });
+      const aplica = litros >= 0.999 && tieneComplemento;
+      return {
+        aplica: aplica,
+        kind: "PROMO_COMPLETA",
+        nombrePromo: "Completa tu Comida",
+        descuentoTotal: aplica ? 10 : 0,
+        mensaje: aplica
+          ? "Ya obtuviste $10 de descuento por completar tu comida."
+          : "Agrega salsa o tortilla a 1 litro de guisado para obtener $10 de descuento."
+      };
+    }
+
+    function detectarMixLaMa_(){
+      const productos = {};
+      carrito.forEach(function(item){
+        const producto = norm_(item && item.producto || "");
+        if (!(Number(item && item.cantidad || 0) > 0) || producto === "combo") return;
+        if (["tortilla", "sope", "huarache", "gordita", "gorditas"].indexOf(producto) < 0) return;
+        productos[producto === "gorditas" ? "gordita" : producto] = true;
+      });
+      const distintos = Object.keys(productos).length;
+      const descuento = distintos >= 3 ? 10 : (distintos >= 2 ? 5 : 0);
+      return {
+        aplica: descuento > 0,
+        kind: "PROMO_MIX_LAMA",
+        nombrePromo: "Mix La Má",
+        descuentoTotal: descuento,
+        mensaje: descuento > 0
+          ? ("Ya obtuviste $" + descuento + " de descuento Mix La Má.")
+          : "Combina 2 productos distintos de La Má para obtener descuento."
+      };
+    }
+
+    function detectarRecompensaFrecuente_(){
+      const info = promocionFrecuenteCliente_ || {};
+      const subtotal = carrito.reduce(function(total, item){
+        return total + Number(item.precio || 0) * Number(item.cantidad || 0);
+      }, 0);
+      const disponibles = Math.max(0, Number(info.recompensasDisponibles || 0));
+      const aplica = disponibles > 0 && subtotal >= 150;
+      return {
+        aplica: aplica,
+        kind: "PROMO_FRECUENTE",
+        nombrePromo: "Recompensa Cliente Frecuente",
+        descuentoTotal: aplica ? 15 : 0,
+        mensaje: disponibles > 0
+          ? (subtotal >= 150 ? "Ya aplicaste tu recompensa de $15." : "Tienes una recompensa de $15 disponible en pedidos desde $150.")
+          : ""
+      };
+    }
+
+    function detectarPromocionesCliente_(){
+      return [
+        detectarPaqueteFamiliar_(),
+        detectarComboVariedad_(),
+        detectarRecompensaFrecuente_(),
+        detectarCompletaTuComida_(),
+        detectarMixLaMa_()
+      ].filter(Boolean);
+    }
+
+    function seleccionarMejorPromocionCliente_(promos){
+      const prioridad = {
+        PROMO_FRECUENTE: 1,
+        PROMO_FAMILIAR: 2,
+        PROMO_VARIEDAD: 3,
+        PROMO_COMPLETA: 4,
+        PROMO_MIX_LAMA: 5
+      };
+      return (promos || []).filter(function(promo){
+        return promo.aplica && Number(promo.descuentoTotal || 0) > 0;
+      }).sort(function(a, b){
+        return (Number(b.descuentoTotal || 0) - Number(a.descuentoTotal || 0)) ||
+          (Number(prioridad[a.kind] || 99) - Number(prioridad[b.kind] || 99));
+      })[0] || null;
+    }
+
+    function mostrarVariedadTip_(promo, ganadora){
       const el = document.getElementById("variedadTip");
       if (!el) return;
-      if (!carrito.length) {
+      if (!carrito.length || ganadora) {
         el.className = "notice tip";
         el.textContent = "";
         return;

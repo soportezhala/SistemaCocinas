@@ -58,7 +58,7 @@
 
     .hero {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr) auto;
       gap: 18px;
       align-items: center;
       padding: 24px;
@@ -66,6 +66,25 @@
       border-radius: 24px;
       background: rgba(255, 253, 250, .9);
       box-shadow: var(--shadow);
+    }
+
+    .brand-logos {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .brand-logo {
+      width: clamp(64px, 8vw, 96px);
+      height: clamp(64px, 8vw, 96px);
+      object-fit: contain;
+      border-radius: 20px;
+      border: 1px solid rgba(230, 213, 195, .9);
+      background: rgba(255, 253, 250, .86);
+      padding: 8px;
+      box-shadow: 0 10px 24px rgba(31, 45, 49, .10);
     }
 
     .badge {
@@ -412,6 +431,10 @@
         grid-template-columns: 1fr;
       }
 
+      .brand-logos {
+        justify-content: flex-start;
+      }
+
       .hero-actions,
       .actions {
         justify-content: flex-start;
@@ -461,12 +484,22 @@
       .hero-actions .btn {
         width: auto;
       }
+
+      .brand-logo {
+        width: 70px;
+        height: 70px;
+        border-radius: 16px;
+      }
     }
   </style>
 </head>
 <body>
   <main class="page">
     <section class="hero">
+      <div class="brand-logos" aria-label="Logos del sistema">
+        <img class="brand-logo" src="img/logolama3.png" alt="Tortillas La Má">
+        <img class="brand-logo" src="img/logosusy.png" alt="La Cocina de Susy">
+      </div>
       <div>
         <span class="badge">Operacion diaria</span>
         <h1>Armado de pedidos</h1>

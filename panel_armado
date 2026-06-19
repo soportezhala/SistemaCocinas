@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Armado de pedidos</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Playfair+Display:wght@700&display=swap');
+
+    :root {
+      --ink: #152b32;
+      --muted: #667780;
+      --paper: #f7f1e8;
+      --card: #fffdfa;
+      --line: #e6d5c3;
+      --teal: #087486;
+      --teal-strong: #075d6c;
+      --coral: #d96f52;
+      --gold: #e7b84a;
+      --ok: #2f8057;
+      --warn: #a56c16;
+      --danger: #b94e3a;
+      --soft-ok: #eaf7ef;
+      --soft-warn: #fff6df;
+      --soft-danger: #fff0eb;
+      --shadow: 0 18px 44px rgba(31, 45, 49, .10);
+      --font-ui: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-display: 'Playfair Display', Georgia, serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(231, 184, 74, .18), transparent 32%),
+        linear-gradient(135deg, #faf7f1 0%, #eef4f2 52%, #f6efe6 100%);
+      font-family: var(--font-ui);
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .page {
+      width: min(1280px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255, 253, 250, .9);
+      box-shadow: var(--shadow);
+    }
+
+    .badge {
+      display: inline-flex;
+      width: fit-content;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f8efe3;
+      color: #7a593c;
+      padding: 7px 12px;
+      font-size: .9rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 6vw, 4.2rem);
+      line-height: .95;
+      letter-spacing: -.02em;
+    }
+
+    h2, h3, p {
+      margin-top: 0;
+    }
+
+    h2 {
+      margin-bottom: 6px;
+      font-size: 1.35rem;
+    }
+
+    .muted {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .hero-actions,
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: var(--teal);
+      color: white;
+      font-weight: 800;
+      box-shadow: 0 10px 22px rgba(8, 116, 134, .16);
+    }
+
+    .btn:hover { background: var(--teal-strong); }
+
+    .btn.secondary {
+      background: #fffdfa;
+      color: var(--ink);
+      border: 1px solid #cfdae0;
+      box-shadow: none;
+    }
+
+    .btn.warning {
+      background: var(--coral);
+      color: white;
+    }
+
+    .btn.ghost {
+      background: #f6f9fa;
+      color: var(--ink);
+      border: 1px solid #d7e2e6;
+      box-shadow: none;
+    }
+
+    .btn.small {
+      min-height: 36px;
+      padding: 8px 12px;
+      font-size: .88rem;
+    }
+
+    .layout {
+      display: grid;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255, 253, 250, .94);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr)) auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: #51646f;
+      font-size: .88rem;
+      font-weight: 700;
+    }
+
+    select, input {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid #ccdce4;
+      border-radius: 14px;
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 4px rgba(8, 116, 134, .12);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fffdfa;
+      padding: 14px;
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: .82rem;
+      font-weight: 700;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 4px;
+      font-size: clamp(1.45rem, 4vw, 2.25rem);
+      line-height: 1;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .segmented {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .notice {
+      display: none;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #fffdfa;
+      color: var(--ink);
+    }
+
+    .notice.show { display: block; }
+    .notice.ok { background: var(--soft-ok); border-color: #b9dfc4; color: #236742; }
+    .notice.warn { background: var(--soft-warn); border-color: #f0cf82; color: #7d5512; }
+    .notice.error { background: var(--soft-danger); border-color: #edb4a8; color: #943a2b; }
+
+    .client-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .client-card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 14px 34px rgba(31, 45, 49, .08);
+    }
+
+    .client-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 16px 18px;
+      background: linear-gradient(135deg, #fffaf1, #f7fbfa);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .client-title {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .client-title strong {
+      font-size: 1.08rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: .82rem;
+      font-weight: 800;
+      background: #f4ede4;
+      color: #705740;
+    }
+
+    .chip.ok { background: var(--soft-ok); color: #236742; }
+    .chip.warn { background: var(--soft-warn); color: #7d5512; }
+    .chip.danger { background: var(--soft-danger); color: #943a2b; }
+
+    .progress-wrap {
+      padding: 0 18px 16px;
+      background: linear-gradient(135deg, #fffaf1, #f7fbfa);
+    }
+
+    .progress {
+      height: 11px;
+      border-radius: 999px;
+      background: #eadfd3;
+      overflow: hidden;
+    }
+
+    .progress > div {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--warn);
+      transition: width .18s ease;
+    }
+
+    .progress > div.done { background: var(--ok); }
+
+    .items {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .item-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(190px, auto);
+      gap: 12px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      background: var(--soft-danger);
+    }
+
+    .item-card.partial { background: var(--soft-warn); }
+    .item-card.done { background: var(--soft-ok); }
+
+    .item-main {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .item-main strong {
+      font-size: 1rem;
+    }
+
+    .item-meta {
+      color: #52646f;
+      font-size: .9rem;
+      line-height: 1.35;
+    }
+
+    .check-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .piece-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #fff;
+      border: 1px solid #d8e1e5;
+      color: var(--ink);
+      font-weight: 800;
+      user-select: none;
+    }
+
+    .piece-check.done {
+      background: #daf0e1;
+      border-color: #a6d5b4;
+      color: #1f6f3d;
+    }
+
+    .piece-check input {
+      width: 18px;
+      height: 18px;
+      min-height: 18px;
+      accent-color: var(--ok);
+    }
+
+    .empty {
+      padding: 26px;
+      border: 1px dashed var(--line);
+      border-radius: 18px;
+      text-align: center;
+      background: #fffdfa;
+    }
+
+    .loading {
+      opacity: .65;
+      pointer-events: none;
+    }
+
+    @media (max-width: 920px) {
+      .hero,
+      .client-head {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-actions,
+      .actions {
+        justify-content: flex-start;
+      }
+
+      .filters,
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        padding: 12px;
+      }
+
+      .hero,
+      .card {
+        border-radius: 18px;
+        padding: 16px;
+      }
+
+      .filters,
+      .stats-grid,
+      .item-card {
+        grid-template-columns: 1fr;
+      }
+
+      .check-grid {
+        justify-content: flex-start;
+      }
+
+      .client-head {
+        padding: 14px;
+      }
+
+      .progress-wrap {
+        padding: 0 14px 14px;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .segmented .btn,
+      .client-head .btn,
+      .hero-actions .btn {
+        width: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <span class="badge">Operacion diaria</span>
+        <h1>Armado de pedidos</h1>
+        <p class="muted" style="margin:12px 0 0;">Marca cada pieza cuando ya quedó empacada. El sistema conserva el avance y actualiza empaques automáticamente.</p>
+      </div>
+      <div class="hero-actions">
+        <button class="btn secondary" type="button" id="autoBtn" onclick="toggleAutoRefresh_()">Auto: off</button>
+        <button class="btn" type="button" onclick="cargarArmado_()">Actualizar</button>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div id="message" class="notice"></div>
+
+      <section class="card">
+        <div class="filters">
+          <label>Semana
+            <select id="semana" onchange="cargarArmado_()"></select>
+          </label>
+          <label>Día
+            <select id="dia" onchange="cargarArmado_()"></select>
+          </label>
+          <label>Cocina
+            <select id="cocina" onchange="cargarArmado_()"></select>
+          </label>
+          <label>Cliente
+            <select id="cliente" onchange="cargarArmado_()"></select>
+          </label>
+          <button class="btn secondary" type="button" onclick="resetFiltros_()">Limpiar filtros</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="stats-grid">
+          <div class="stat"><span>Clientes</span><strong id="statClientes">0</strong></div>
+          <div class="stat"><span>Pendientes</span><strong id="statPendientes">0</strong></div>
+          <div class="stat"><span>Completos</span><strong id="statCompletos">0</strong></div>
+          <div class="stat"><span>Piezas</span><strong id="statPiezas">0 / 0</strong></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="toolbar">
+          <div>
+            <h2>Pedidos por empacar</h2>
+            <p class="muted" id="periodoTexto">Cargando periodo...</p>
+          </div>
+          <div class="segmented">
+            <button class="btn small" type="button" data-filter="todos" onclick="setFiltroVista_('todos')">Todos</button>
+            <button class="btn secondary small" type="button" data-filter="pendientes" onclick="setFiltroVista_('pendientes')">Pendientes</button>
+            <button class="btn secondary small" type="button" data-filter="completos" onclick="setFiltroVista_('completos')">Completos</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="armadoList" class="client-list">
+        <div class="card empty">Cargando armado...</div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwOh48dsgpGVhCUbs4250L7dMHbbAvvv1-rdLWHq9pK5xiMfhQmS1HaRR2t2BZ0xblfOg/exec";
+
+    let armadoData = [];
+    let viewFilter = "pendientes";
+    let filterOptions = { clientes: [], cocinas: [], dias: [] };
+    let autoRefresh = false;
+    let autoTimer = null;
+    let loading = false;
+
+    document.addEventListener("DOMContentLoaded", inicializar_);
+
+    function api_(payload) {
+      return fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload || {})
+      })
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if (!data.exito) throw new Error(data.message || "Error de API");
+        return data;
+      });
+    }
+
+    function inicializar_() {
+      setMensaje_("Cargando filtros y periodo vigente...", "warn");
+      Promise.all([
+        api_({ action: "getPanelFilters" }),
+        api_({ action: "obtenerSemanasDisponibles" }),
+        api_({ action: "getViewerPeriodoVigente" })
+      ])
+      .then(function(results){
+        filterOptions = {
+          clientes: results[0].clientes || [],
+          cocinas: results[0].cocinas || [],
+          dias: results[0].dias || []
+        };
+        renderSelectOptions_("semana", results[1].semanas || [], results[2].semana || "");
+        renderSelectOptions_("dia", filterOptions.dias, results[2].dia || "");
+        renderSelectOptions_("cocina", filterOptions.cocinas, "");
+        renderSelectOptions_("cliente", filterOptions.clientes, "");
+        setMensaje_("", "");
+        cargarArmado_();
+      })
+      .catch(function(err){
+        setMensaje_("No se pudo inicializar Armado: " + getErrorMessage_(err), "error");
+        renderEmpty_("No se pudo cargar la página de armado.");
+      });
+    }
+
+    function renderSelectOptions_(id, options, selected) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const includeAll = id !== "semana";
+      let html = includeAll ? "<option value=''>Todo</option>" : "";
+      (options || []).forEach(function(option){
+        const value = String(option || "");
+        html += "<option value=\"" + escapeAttr_(value) + "\"" + (norm_(value) === norm_(selected) ? " selected" : "") + ">" + escapeHtml_(value) + "</option>";
+      });
+      el.innerHTML = html || "<option value=''>Sin opciones</option>";
+      if (selected && Array.from(el.options).every(function(opt){ return norm_(opt.value) !== norm_(selected); })) {
+        const opt = document.createElement("option");
+        opt.value = selected;
+        opt.textContent = selected;
+        opt.selected = true;
+        el.insertBefore(opt, el.firstChild);
+      }
+    }
+
+    function getFiltros_() {
+      return {
+        semana: valueOf_("semana"),
+        dia: valueOf_("dia"),
+        cocina: valueOf_("cocina"),
+        cliente: valueOf_("cliente")
+      };
+    }
+
+    function cargarArmado_() {
+      if (loading) return;
+      const filtros = getFiltros_();
+      if (!filtros.semana) {
+        setMensaje_("Selecciona una semana para cargar el armado.", "warn");
+        return;
+      }
+      loading = true;
+      document.body.classList.add("loading");
+      setMensaje_("Actualizando armado...", "warn");
+      api_({
+        action: "obtenerArmadoPedidos",
+        semana: filtros.semana,
+        filtros: filtros
+      })
+      .then(function(data){
+        armadoData = Array.isArray(data.pedidos) ? data.pedidos : [];
+        setMensaje_("Armado actualizado.", "ok", 1600);
+        renderArmado_();
+      })
+      .catch(function(err){
+        setMensaje_("No se pudo cargar armado: " + getErrorMessage_(err), "error");
+      })
+      .finally(function(){
+        loading = false;
+        document.body.classList.remove("loading");
+      });
+    }
+
+    function renderArmado_() {
+      const list = document.getElementById("armadoList");
+      const data = Array.isArray(armadoData) ? armadoData : [];
+      const totals = getTotals_(data);
+      document.getElementById("statClientes").textContent = totals.clientes;
+      document.getElementById("statPendientes").textContent = totals.pendientes;
+      document.getElementById("statCompletos").textContent = totals.completos;
+      document.getElementById("statPiezas").textContent = totals.empacadas + " / " + totals.piezas;
+      document.getElementById("periodoTexto").textContent = buildPeriodoTexto_();
+      updateFilterButtons_();
+
+      const filtered = filtrarClientes_(data);
+      if (!filtered.length) {
+        renderEmpty_(data.length ? "No hay pedidos que coincidan con el filtro seleccionado." : "No hay pedidos para armar con los filtros seleccionados.");
+        return;
+      }
+
+      list.innerHTML = filtered.map(renderClienteCard_).join("");
+    }
+
+    function renderClienteCard_(cliente, filteredIdx) {
+      const sourceIdx = armadoData.findIndex(function(row){ return row && row.cliente === cliente.cliente; });
+      const total = Number(cliente.totalUnidades || 0);
+      const packed = Number(cliente.totalEmpacadas || 0);
+      const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((packed / total) * 100))) : 0;
+      const complete = total > 0 && packed >= total;
+      const chipClass = complete ? "ok" : (packed > 0 ? "warn" : "danger");
+      const items = (cliente.items || []).map(function(item){
+        const sourceItemIdx = getSourceItemIndex_(sourceIdx, item);
+        return renderItemCard_(sourceIdx, sourceItemIdx, item);
+      }).join("");
+
+      return ""
+        + "<article class='client-card'>"
+        + "<div class='client-head'>"
+        + "<div class='client-title'><strong>" + escapeHtml_(cliente.cliente || "Sin cliente") + "</strong>"
+        + "<span class='chip " + chipClass + "'>" + packed + " / " + total + " piezas</span></div>"
+        + "<div class='actions'>"
+        + "<button class='btn small' type='button' onclick='setArmadoClienteChecks_(" + sourceIdx + ", true)'>Marcar todo</button>"
+        + "<button class='btn ghost small' type='button' onclick='setArmadoClienteChecks_(" + sourceIdx + ", false)'>Limpiar</button>"
+        + "</div>"
+        + "</div>"
+        + "<div class='progress-wrap'><div class='progress'><div class='" + (complete ? "done" : "") + "' style='width:" + pct + "%'></div></div></div>"
+        + "<div class='items'>" + items + "</div>"
+        + "</article>";
+    }
+
+    function renderItemCard_(clientIdx, itemIdx, item) {
+      const total = Number(item && item.unitCount || 0);
+      const packed = Number(item && item.packedCount || 0);
+      const state = total > 0 && packed >= total ? "done" : (packed > 0 ? "partial" : "");
+      const detail = [
+        item.presentacion ? ("Presentación: " + item.presentacion) : "",
+        item.cantidad ? ("Cantidad: " + item.cantidad) : "",
+        total ? ("Empacado: " + packed + "/" + total) : ""
+      ].filter(Boolean).join(" · ");
+      return ""
+        + "<div class='item-card " + state + "'>"
+        + "<div class='item-main'>"
+        + "<strong>" + escapeHtml_(item.producto || "") + "</strong>"
+        + "<div>" + escapeHtml_(item.detalle || "Sin detalle") + "</div>"
+        + "<div class='item-meta'>" + escapeHtml_(detail) + "</div>"
+        + "</div>"
+        + "<div>"
+        + "<div class='check-grid'>" + renderChecks_(clientIdx, itemIdx, item) + "</div>"
+        + "<div class='actions' style='margin-top:10px;'>"
+        + "<button class='btn ghost small' type='button' onclick='setArmadoItemChecks_(" + clientIdx + "," + itemIdx + ", true)'>Renglón listo</button>"
+        + "<button class='btn secondary small' type='button' onclick='setArmadoItemChecks_(" + clientIdx + "," + itemIdx + ", false)'>Reabrir</button>"
+        + "</div>"
+        + "</div>"
+        + "</div>";
+    }
+
+    function renderChecks_(clientIdx, itemIdx, item) {
+      const checks = Array.isArray(item && item.unitChecks) ? item.unitChecks : [];
+      if (!checks.length) return "<span class='muted'>Sin piezas</span>";
+      return checks.map(function(check){
+        const done = !!check.empacado;
+        return ""
+          + "<label class='piece-check " + (done ? "done" : "") + "'>"
+          + "<input type='checkbox' " + (done ? "checked" : "") + " onchange='toggleArmadoCheck_(" + clientIdx + "," + itemIdx + "," + Number(check.index || 0) + ", this.checked)'>"
+          + "Pza " + Number(check.index || 0)
+          + "</label>";
+      }).join("");
+    }
+
+    function toggleArmadoCheck_(clientIdx, itemIdx, unitIndex, checked) {
+      const payload = getPedidoPayload_(clientIdx, itemIdx);
+      if (!payload) return;
+      actualizarArmado_({
+        action: "saveArmadoCheck",
+        semana: getFiltros_().semana,
+        filtros: getFiltros_(),
+        cliente: payload.cliente,
+        pedidoId: payload.item.idPedido,
+        unitIndex: unitIndex,
+        empacado: checked
+      });
+    }
+
+    function setArmadoItemChecks_(clientIdx, itemIdx, checked) {
+      const payload = getPedidoPayload_(clientIdx, itemIdx);
+      if (!payload) return;
+      actualizarArmado_({
+        action: "saveArmadoItemChecks",
+        semana: getFiltros_().semana,
+        filtros: getFiltros_(),
+        cliente: payload.cliente,
+        pedidoId: payload.item.idPedido,
+        totalUnits: payload.item.unitCount,
+        empacado: checked
+      });
+    }
+
+    function setArmadoClienteChecks_(clientIdx, checked) {
+      const cliente = armadoData[clientIdx];
+      if (!cliente || !Array.isArray(cliente.items) || !cliente.items.length) {
+        setMensaje_("No se encontró información del cliente.", "error");
+        return;
+      }
+      const pedidos = cliente.items.map(function(item){
+        return { idPedido: item.idPedido, totalUnits: item.unitCount };
+      }).filter(function(item){ return item.idPedido && item.totalUnits; });
+      actualizarArmado_({
+        action: "saveArmadoClienteChecks",
+        semana: getFiltros_().semana,
+        filtros: getFiltros_(),
+        cliente: cliente.cliente,
+        pedidos: pedidos,
+        empacado: checked
+      });
+    }
+
+    function actualizarArmado_(payload) {
+      loading = true;
+      document.body.classList.add("loading");
+      setMensaje_("Guardando avance...", "warn");
+      api_(payload)
+      .then(function(data){
+        armadoData = Array.isArray(data.pedidos) ? data.pedidos : [];
+        setMensaje_("Avance guardado.", "ok", 1400);
+        renderArmado_();
+      })
+      .catch(function(err){
+        setMensaje_("No se pudo guardar: " + getErrorMessage_(err), "error");
+        cargarArmado_();
+      })
+      .finally(function(){
+        loading = false;
+        document.body.classList.remove("loading");
+      });
+    }
+
+    function getPedidoPayload_(clientIdx, itemIdx) {
+      const cliente = armadoData[clientIdx];
+      const item = cliente && cliente.items ? cliente.items[itemIdx] : null;
+      if (!cliente || !item) {
+        setMensaje_("No se encontró el pedido para actualizar.", "error");
+        return null;
+      }
+      return { cliente: cliente.cliente, item: item };
+    }
+
+    function getSourceItemIndex_(clientIdx, item) {
+      const cliente = armadoData[clientIdx];
+      const items = cliente && Array.isArray(cliente.items) ? cliente.items : [];
+      return items.findIndex(function(src){
+        return src && src.idPedido === item.idPedido
+          && String(src.presentacion || "") === String(item.presentacion || "")
+          && String(src.detalle || "") === String(item.detalle || "");
+      });
+    }
+
+    function filtrarClientes_(data) {
+      return (data || []).map(function(cliente){
+        const items = (cliente.items || []).filter(function(item){
+          if (viewFilter === "pendientes") return !item.fullyPacked;
+          if (viewFilter === "completos") return !!item.fullyPacked;
+          return true;
+        });
+        return {
+          cliente: cliente.cliente,
+          items: items,
+          totalUnidades: Number(cliente.totalUnidades || 0),
+          totalEmpacadas: Number(cliente.totalEmpacadas || 0)
+        };
+      })
+      .filter(function(cliente){ return cliente.items.length; })
+      .sort(function(a, b){
+        const aPending = Number(a.totalEmpacadas || 0) < Number(a.totalUnidades || 0) ? 1 : 0;
+        const bPending = Number(b.totalEmpacadas || 0) < Number(b.totalUnidades || 0) ? 1 : 0;
+        if (aPending !== bPending) return bPending - aPending;
+        return String(a.cliente || "").localeCompare(String(b.cliente || ""), "es");
+      });
+    }
+
+    function getTotals_(data) {
+      const clientes = data.length;
+      const completos = data.filter(function(c){
+        return Number(c.totalUnidades || 0) > 0 && Number(c.totalEmpacadas || 0) >= Number(c.totalUnidades || 0);
+      }).length;
+      const pendientes = data.filter(function(c){
+        return Number(c.totalEmpacadas || 0) < Number(c.totalUnidades || 0);
+      }).length;
+      const piezas = data.reduce(function(total, c){ return total + Number(c.totalUnidades || 0); }, 0);
+      const empacadas = data.reduce(function(total, c){ return total + Number(c.totalEmpacadas || 0); }, 0);
+      return { clientes: clientes, completos: completos, pendientes: pendientes, piezas: piezas, empacadas: empacadas };
+    }
+
+    function setFiltroVista_(filter) {
+      viewFilter = filter || "todos";
+      renderArmado_();
+    }
+
+    function updateFilterButtons_() {
+      document.querySelectorAll("[data-filter]").forEach(function(btn){
+        const active = btn.getAttribute("data-filter") === viewFilter;
+        btn.className = active ? "btn small" : "btn secondary small";
+      });
+    }
+
+    function resetFiltros_() {
+      ["dia", "cocina", "cliente"].forEach(function(id){
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+      cargarArmado_();
+    }
+
+    function toggleAutoRefresh_() {
+      autoRefresh = !autoRefresh;
+      const btn = document.getElementById("autoBtn");
+      btn.textContent = autoRefresh ? "Auto: on" : "Auto: off";
+      btn.className = autoRefresh ? "btn" : "btn secondary";
+      if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+      if (autoRefresh) {
+        autoTimer = setInterval(function(){
+          if (!loading) cargarArmado_();
+        }, 30000);
+      }
+    }
+
+    function renderEmpty_(message) {
+      const list = document.getElementById("armadoList");
+      list.innerHTML = "<div class='card empty'>" + escapeHtml_(message || "Sin datos.") + "</div>";
+    }
+
+    function buildPeriodoTexto_() {
+      const filtros = getFiltros_();
+      const parts = [
+        filtros.semana ? ("Semana " + filtros.semana) : "",
+        filtros.dia ? ("Día " + filtros.dia) : "Todos los días",
+        filtros.cocina ? ("Cocina " + filtros.cocina) : "Todas las cocinas",
+        filtros.cliente ? ("Cliente " + filtros.cliente) : ""
+      ].filter(Boolean);
+      return parts.join(" · ");
+    }
+
+    function setMensaje_(message, type, timeout) {
+      const el = document.getElementById("message");
+      if (!el) return;
+      if (!message) {
+        el.className = "notice";
+        el.textContent = "";
+        return;
+      }
+      el.className = "notice show " + (type || "warn");
+      el.textContent = message;
+      if (timeout) {
+        setTimeout(function(){
+          if (el.textContent === message) setMensaje_("", "");
+        }, timeout);
+      }
+    }
+
+    function valueOf_(id) {
+      const el = document.getElementById(id);
+      return el ? String(el.value || "").trim() : "";
+    }
+
+    function getErrorMessage_(err) {
+      return err && err.message ? err.message : String(err || "Error desconocido");
+    }
+
+    function norm_(value) {
+      return String(value || "").trim().toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function escapeHtml_(value) {
+      return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttr_(value) {
+      return escapeHtml_(value).replace(/`/g, "&#096;");
+    }
+  </script>
+</body>
+</html>

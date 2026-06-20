@@ -2064,20 +2064,30 @@ function renderCocinaHeader_(nombreCocina) {
       };
     }
 
+    function getClienteFrecuenteDiscountForSubtotal_(subtotal){
+      const value = Math.max(0, Number(subtotal || 0));
+      if (value >= 450) return 20;
+      if (value >= 350) return 15;
+      if (value >= 250) return 10;
+      if (value >= 150) return 5;
+      return 0;
+    }
+
     function detectarRecompensaFrecuente_(){
       const info = promocionFrecuenteCliente_ || {};
       const subtotal = carrito.reduce(function(total, item){
         return total + Number(item.precio || 0) * Number(item.cantidad || 0);
       }, 0);
       const disponibles = Math.max(0, Number(info.recompensasDisponibles || 0));
-      const aplica = disponibles > 0 && subtotal >= 150;
+      const descuentoFrecuente = getClienteFrecuenteDiscountForSubtotal_(subtotal);
+      const aplica = disponibles > 0 && descuentoFrecuente > 0;
       return {
         aplica: aplica,
         kind: "PROMO_FRECUENTE",
         nombrePromo: "Recompensa Cliente Frecuente",
-        descuentoTotal: aplica ? 15 : 0,
+        descuentoTotal: aplica ? descuentoFrecuente : 0,
         mensaje: disponibles > 0
-          ? (subtotal >= 150 ? "Ya aplicaste tu recompensa de $15." : "Tienes una recompensa de $15 disponible en pedidos desde $150.")
+          ? (descuentoFrecuente > 0 ? ("Ya aplicaste tu recompensa de $" + descuentoFrecuente + ".") : "Tienes una recompensa disponible en pedidos desde $150.")
           : ""
       };
     }

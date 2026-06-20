@@ -194,6 +194,87 @@
       line-height: 1.35;
     }
 
+    .account-card {
+      display: none;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fffdfa;
+    }
+
+    .account-card.show {
+      display: grid;
+    }
+
+    .account-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .account-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .account-metric {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 9px;
+      background: var(--soft);
+    }
+
+    .account-metric span {
+      display: block;
+      color: var(--muted);
+      font-size: .74rem;
+      line-height: 1.25;
+    }
+
+    .account-metric strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 1rem;
+    }
+
+    .account-orders {
+      display: grid;
+      gap: 8px;
+    }
+
+    .account-order {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: #fff;
+    }
+
+    .account-order-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-weight: 800;
+    }
+
+    .account-order-meta,
+    .account-order-items {
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.35;
+    }
+
+    .account-order-total {
+      margin-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-weight: 800;
+    }
+
     .btn.compact {
       min-height: 36px;
       padding: 7px 12px;
@@ -532,6 +613,10 @@
         gap: 14px;
       }
 
+      .account-summary {
+        grid-template-columns: 1fr;
+      }
+
       .panel,
       .product-card {
         padding: 14px;
@@ -654,6 +739,10 @@
 
       obtenerPromocionFrecuenteCliente(cliente, token) {
         callApi({ action: "obtenerPromocionFrecuenteCliente", cliente, token }, this);
+      },
+
+      obtenerMiCuentaCliente(token) {
+        callApi({ action: "obtenerMiCuentaCliente", token }, this);
       },
 
       registrarCliente(nombre, telefono, pin) {
@@ -805,6 +894,17 @@
               <option value="Lunes">Lunes</option>
               <option value="Viernes">Viernes</option>
             </select>
+          </div>
+
+          <div id="miCuentaCard" class="account-card">
+            <div class="account-head">
+              <div>
+                <strong>Mi cuenta</strong>
+                <div class="auth-status">Consulta saldos y tus últimos pedidos.</div>
+              </div>
+              <button id="btnMiCuenta" class="btn ghost compact" type="button" onclick="cargarMiCuentaCliente_()">Actualizar</button>
+            </div>
+            <div id="miCuentaContenido" class="auth-status">Inicia sesión para ver tu información.</div>
           </div>
         </div>
       </div>
@@ -1067,8 +1167,94 @@
         input.readOnly = loggedIn;
         input.value = loggedIn ? sesionCliente_.nombre : input.value;
       }
+      renderMiCuentaEstado_();
       mostrarAuthForm_("");
       cargarPromocionFrecuenteCliente_();
+    }
+
+    function renderMiCuentaEstado_(){
+      const card = document.getElementById("miCuentaCard");
+      const content = document.getElementById("miCuentaContenido");
+      if (!card) return;
+      const loggedIn = !!sesionCliente_;
+      card.classList.toggle("show", loggedIn);
+      if (content && !loggedIn) {
+        content.innerHTML = "Inicia sesión para ver tus saldos y pedidos recientes.";
+        content.removeAttribute("data-loaded");
+      } else if (content && loggedIn && content.getAttribute("data-loaded") !== "1") {
+        content.innerHTML = "Presiona <strong>Actualizar</strong> para consultar tu saldo y tus últimos pedidos.";
+      }
+    }
+
+    function cargarMiCuentaCliente_(){
+      const token = getClienteToken_();
+      const btn = document.getElementById("btnMiCuenta");
+      const content = document.getElementById("miCuentaContenido");
+      if (!token || !sesionCliente_) {
+        mostrarAuthForm_("login");
+        return mostrarMensaje_("Inicia sesión para consultar tu cuenta.", "error");
+      }
+      if (btn) btn.disabled = true;
+      if (content) content.innerHTML = "Consultando tu cuenta...";
+      google.script.run
+        .withFailureHandler(function(err){
+          if (btn) btn.disabled = false;
+          if (content) content.innerHTML = "No pudimos cargar tu cuenta por ahora.";
+          mostrarMensaje_(errorText_(err), "error");
+        })
+        .withSuccessHandler(function(result){
+          if (btn) btn.disabled = false;
+          renderMiCuentaCliente_(result || {});
+        })
+        .obtenerMiCuentaCliente(token);
+    }
+
+    function renderMiCuentaCliente_(data){
+      const content = document.getElementById("miCuentaContenido");
+      if (!content) return;
+      const cuenta = data.cuenta || {};
+      const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
+      const saldoPendiente = Number(cuenta.saldoPendiente || 0);
+      const cambioPendiente = Number(cuenta.cambioPendiente || 0);
+      const saldoFavor = Number(cuenta.saldoFavor || 0);
+      let html = "";
+      html += "<div class='account-summary'>";
+      html += "<div class='account-metric'><span>Saldo pendiente</span><strong>" + escapeHtml_(money_(saldoPendiente)) + "</strong></div>";
+      html += "<div class='account-metric'><span>Cambio pendiente</span><strong>" + escapeHtml_(money_(cambioPendiente)) + "</strong></div>";
+      html += "<div class='account-metric'><span>Saldo a favor</span><strong>" + escapeHtml_(money_(saldoFavor)) + "</strong></div>";
+      html += "</div>";
+      html += "<div class='account-orders'>";
+      html += "<strong>Últimos pedidos</strong>";
+      if (!pedidos.length) {
+        html += "<div class='empty'>Aún no encontramos pedidos recientes.</div>";
+      } else {
+        html += pedidos.map(function(pedido){
+          const titulo = (pedido.tipo || "Pedido") + (pedido.folio ? " " + pedido.folio : "");
+          const meta = [
+            pedido.semana ? ("Semana " + pedido.semana) : "",
+            pedido.diaEntrega || "",
+            pedido.estadoPedido ? ("Estado: " + pedido.estadoPedido) : "",
+            pedido.estadoPago ? ("Pago: " + pedido.estadoPago) : ""
+          ].filter(Boolean).join(" · ");
+          const items = (pedido.items || []).slice(0, 4).map(function(item){
+            return escapeHtml_(item.item || "Producto") + " <span>(" + escapeHtml_(item.presentacion || "") + " x " + escapeHtml_(item.cantidad || 0) + ")</span>";
+          }).join("<br>");
+          const extras = (pedido.items || []).length > 4 ? "<br>+" + ((pedido.items || []).length - 4) + " producto(s) más" : "";
+          const pendiente = Number(pedido.totalPorCobrarActual || 0);
+          const totalLabel = pendiente > 0 ? "Por cobrar" : "Total";
+          const totalValue = pendiente > 0 ? pendiente : Number(pedido.total || 0);
+          return ""
+            + "<div class='account-order'>"
+            + "<div class='account-order-title'><span>" + escapeHtml_(titulo) + "</span><span>" + escapeHtml_(pedido.fecha || "") + "</span></div>"
+            + "<div class='account-order-meta'>" + escapeHtml_(meta) + "</div>"
+            + "<div class='account-order-items'>" + (items || "Sin detalle") + extras + "</div>"
+            + "<div class='account-order-total'><span>" + escapeHtml_(totalLabel) + "</span><span>" + escapeHtml_(money_(totalValue)) + "</span></div>"
+            + "</div>";
+        }).join("");
+      }
+      html += "</div>";
+      content.innerHTML = html;
+      content.setAttribute("data-loaded", "1");
     }
 
     function cargarPromocionFrecuenteCliente_(){

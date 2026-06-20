@@ -745,6 +745,10 @@
         callApi({ action: "obtenerMiCuentaCliente", token }, this);
       },
 
+      obtenerMiCuentaClientePorNombre(nombre) {
+        callApi({ action: "obtenerMiCuentaClientePorNombre", nombre }, this);
+      },
+
       registrarCliente(nombre, telefono, pin) {
         callApi({ action: "registrarCliente", nombre, telefono, pin }, this);
       },
@@ -1177,9 +1181,9 @@
       const content = document.getElementById("miCuentaContenido");
       if (!card) return;
       const loggedIn = !!sesionCliente_;
-      card.classList.toggle("show", loggedIn);
+      card.classList.add("show");
       if (content && !loggedIn) {
-        content.innerHTML = "Inicia sesión para ver tus saldos y pedidos recientes.";
+        content.innerHTML = "Puedes iniciar sesión para ver tu cuenta, o escribir tu nombre arriba y presionar <strong>Actualizar</strong> durante esta etapa de transición.";
         content.removeAttribute("data-loaded");
       } else if (content && loggedIn && content.getAttribute("data-loaded") !== "1") {
         content.innerHTML = "Presiona <strong>Actualizar</strong> para consultar tu saldo y tus últimos pedidos.";
@@ -1188,15 +1192,15 @@
 
     function cargarMiCuentaCliente_(){
       const token = getClienteToken_();
+      const clienteNombre = sesionCliente_ ? sesionCliente_.nombre : String((document.getElementById("cliente") || {}).value || "").trim();
       const btn = document.getElementById("btnMiCuenta");
       const content = document.getElementById("miCuentaContenido");
-      if (!token || !sesionCliente_) {
-        mostrarAuthForm_("login");
-        return mostrarMensaje_("Inicia sesión para consultar tu cuenta.", "error");
+      if (!token && !clienteNombre) {
+        return mostrarMensaje_("Escribe tu nombre o inicia sesión para consultar tu cuenta.", "error");
       }
       if (btn) btn.disabled = true;
       if (content) content.innerHTML = "Consultando tu cuenta...";
-      google.script.run
+      const runner = google.script.run
         .withFailureHandler(function(err){
           if (btn) btn.disabled = false;
           if (content) content.innerHTML = "No pudimos cargar tu cuenta por ahora.";
@@ -1205,8 +1209,12 @@
         .withSuccessHandler(function(result){
           if (btn) btn.disabled = false;
           renderMiCuentaCliente_(result || {});
-        })
-        .obtenerMiCuentaCliente(token);
+        });
+      if (token && sesionCliente_) {
+        runner.obtenerMiCuentaCliente(token);
+      } else {
+        runner.obtenerMiCuentaClientePorNombre(clienteNombre);
+      }
     }
 
     function renderMiCuentaCliente_(data){

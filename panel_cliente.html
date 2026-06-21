@@ -1296,9 +1296,24 @@
         if (btn) btn.textContent = "Ocultar";
         return;
       }
+      cargarDatosTransferencia_(true);
+    }
+
+    function cargarDatosTransferencia_(mostrar){
+      const box = document.getElementById("transferenciaDatos");
+      const btn = document.getElementById("btnTransferencia");
+      if (!box) return;
+      const shouldShow = mostrar !== false;
+      if (box.getAttribute("data-loaded") === "1") {
+        if (shouldShow) {
+          box.classList.add("show");
+          if (btn) btn.textContent = "Ocultar";
+        }
+        return;
+      }
       const cliente = sesionCliente_ ? sesionCliente_.nombre : String((document.getElementById("cliente") || {}).value || "").trim();
       box.innerHTML = "Consultando datos de transferencia...";
-      box.classList.add("show");
+      if (shouldShow) box.classList.add("show");
       if (btn) {
         btn.disabled = true;
         btn.textContent = "Cargando";
@@ -1310,6 +1325,7 @@
             btn.textContent = "Ver datos";
           }
           box.innerHTML = "No pudimos cargar los datos de transferencia. Solicítalos por mensaje.";
+          if (shouldShow) box.classList.add("show");
           mostrarMensaje_(errorText_(err), "error");
         })
         .withSuccessHandler(function(data){
@@ -1318,6 +1334,7 @@
             btn.textContent = "Ocultar";
           }
           renderDatosTransferencia_(data || {});
+          if (shouldShow) box.classList.add("show");
         })
         .obtenerDatosTransferenciaCliente(cliente);
     }
@@ -2194,6 +2211,7 @@ function renderCocinaHeader_(nombreCocina) {
         total,
         promo
       );
+      cargarDatosTransferencia_(true);
       updateDisponibilidadGuisado_();
       updateDisponibilidadSalsa_();
       mostrarMensaje_("", "");
@@ -2828,13 +2846,14 @@ function renderCocinaHeader_(nombreCocina) {
           btn.disabled = false;
           carrito = [];
           renderCarrito_();
+          cargarDatosTransferencia_(true);
           document.getElementById("cliente").value = sesionCliente_ ? sesionCliente_.nombre : "";
           const folio = res && res.folioCarrito ? res.folioCarrito : "";
 
 mostrarMensaje_(
   folio
-    ? "Recibimos tu pedido. Tu folio es " + folio + ". Te confirmaremos en breve."
-    : "Recibimos tu pedido correctamente. Te confirmaremos en breve.",
+    ? "Recibimos tu pedido. Tu folio es " + folio + ". Si pagarás por transferencia, revisa los datos en el carrito."
+    : "Recibimos tu pedido correctamente. Si pagarás por transferencia, revisa los datos en el carrito.",
   "ok"
 );
         })

@@ -275,6 +275,55 @@
       font-weight: 800;
     }
 
+    .payment-help {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fffdfa;
+      display: grid;
+      gap: 10px;
+    }
+
+    .payment-help-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .payment-help-title {
+      display: grid;
+      gap: 2px;
+    }
+
+    .payment-data {
+      display: none;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.45;
+    }
+
+    .payment-data.show {
+      display: grid;
+      gap: 8px;
+    }
+
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px dashed rgba(215, 200, 184, .7);
+    }
+
+    .payment-row strong {
+      color: var(--ink);
+      text-align: right;
+      word-break: break-word;
+    }
+
     .btn.compact {
       min-height: 36px;
       padding: 7px 12px;
@@ -749,6 +798,10 @@
         callApi({ action: "obtenerMiCuentaClientePorNombre", nombre }, this);
       },
 
+      obtenerDatosTransferenciaCliente(cliente) {
+        callApi({ action: "obtenerDatosTransferenciaCliente", cliente }, this);
+      },
+
       registrarCliente(nombre, telefono, pin) {
         callApi({ action: "registrarCliente", nombre, telefono, pin }, this);
       },
@@ -931,6 +984,17 @@
       <div id="promoTip" class="notice ok"></div>
       <div id="variedadTip" class="notice tip"></div>
 
+      <div class="payment-help">
+        <div class="payment-help-head">
+          <div class="payment-help-title">
+            <strong>Pago por transferencia</strong>
+            <span class="auth-status">Consulta los datos solo si los necesitas.</span>
+          </div>
+          <button id="btnTransferencia" class="btn ghost compact" type="button" onclick="toggleDatosTransferencia_()">Ver datos</button>
+        </div>
+        <div id="transferenciaDatos" class="payment-data"></div>
+      </div>
+
       <div id="carritoItems" class="cart-items">
         <div class="empty">Aún no has agregado productos.</div>
       </div>
@@ -1096,6 +1160,7 @@
     let refrescandoDisponibilidad_ = false;
     let sesionCliente_ = null;
     let promocionFrecuenteCliente_ = null;
+    let transferenciaCopiable_ = { clabe: "", completo: "" };
     const CLIENT_SESSION_STORAGE_KEY = "sistema_cocina_cliente_token";
     const CLIENT_CATALOG_STORAGE_PREFIX = "sistema_cocina_catalogo_";
     const CLIENT_CATALOG_MAX_AGE_MS = 5 * 60 * 1000;
@@ -1214,6 +1279,110 @@
         runner.obtenerMiCuentaCliente(token);
       } else {
         runner.obtenerMiCuentaClientePorNombre(clienteNombre);
+      }
+    }
+
+    function toggleDatosTransferencia_(){
+      const box = document.getElementById("transferenciaDatos");
+      const btn = document.getElementById("btnTransferencia");
+      if (!box) return;
+      if (box.classList.contains("show")) {
+        box.classList.remove("show");
+        if (btn) btn.textContent = "Ver datos";
+        return;
+      }
+      if (box.getAttribute("data-loaded") === "1") {
+        box.classList.add("show");
+        if (btn) btn.textContent = "Ocultar";
+        return;
+      }
+      const cliente = sesionCliente_ ? sesionCliente_.nombre : String((document.getElementById("cliente") || {}).value || "").trim();
+      box.innerHTML = "Consultando datos de transferencia...";
+      box.classList.add("show");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Cargando";
+      }
+      google.script.run
+        .withFailureHandler(function(err){
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Ver datos";
+          }
+          box.innerHTML = "No pudimos cargar los datos de transferencia. Solicítalos por mensaje.";
+          mostrarMensaje_(errorText_(err), "error");
+        })
+        .withSuccessHandler(function(data){
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Ocultar";
+          }
+          renderDatosTransferencia_(data || {});
+        })
+        .obtenerDatosTransferenciaCliente(cliente);
+    }
+
+    function renderDatosTransferencia_(data){
+      const box = document.getElementById("transferenciaDatos");
+      if (!box) return;
+      if (!data.activo) {
+        transferenciaCopiable_ = { clabe: "", completo: "" };
+        box.innerHTML = escapeHtml_(data.mensaje || "Los datos de transferencia se comparten al confirmar tu pedido.");
+        box.setAttribute("data-loaded", "1");
+        box.classList.add("show");
+        return;
+      }
+      const rows = [];
+      if (data.titular) rows.push(["Titular", data.titular]);
+      if (data.banco) rows.push(["Banco", data.banco]);
+      if (data.clabe) rows.push(["CLABE", data.clabe]);
+      if (data.referenciaSugerida) rows.push(["Referencia sugerida", data.referenciaSugerida]);
+      let html = rows.map(function(row){
+        return "<div class='payment-row'><span>" + escapeHtml_(row[0]) + "</span><strong>" + escapeHtml_(row[1]) + "</strong></div>";
+      }).join("");
+      transferenciaCopiable_ = {
+        clabe: String(data.clabe || "").replace(/\s+/g, ""),
+        completo: rows.map(function(row){ return row[0] + ": " + row[1]; }).join("\n")
+      };
+      if (transferenciaCopiable_.clabe || transferenciaCopiable_.completo) {
+        html += "<div class='notice-actions'>";
+        if (transferenciaCopiable_.clabe) {
+          html += "<button class='mini-btn' type='button' onclick=\"copiarTransferenciaCampo_('clabe')\">Copiar CLABE</button>";
+        }
+        if (transferenciaCopiable_.completo) {
+          html += "<button class='mini-btn alt' type='button' onclick=\"copiarTransferenciaCampo_('completo')\">Copiar todos los datos</button>";
+        }
+        html += "</div>";
+      }
+      if (data.nota) html += "<div class='helper-text'>" + escapeHtml_(data.nota) + "</div>";
+      box.innerHTML = html || "Solicita los datos de transferencia por mensaje.";
+      box.setAttribute("data-loaded", "1");
+      box.classList.add("show");
+    }
+
+    function copiarTextoTransferencia_(texto){
+      const value = String(texto || "").replace(/\s+/g, "");
+      if (!value) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value)
+          .then(function(){ mostrarMensaje_("Dato de transferencia copiado.", "ok"); })
+          .catch(function(){ mostrarMensaje_("No se pudo copiar automáticamente. Mantén presionado el dato para copiarlo.", "error"); });
+      } else {
+        mostrarMensaje_("Mantén presionado el dato para copiarlo.", "ok");
+      }
+    }
+
+    function copiarTransferenciaCampo_(campo){
+      const key = String(campo || "");
+      const value = transferenciaCopiable_ && transferenciaCopiable_[key] ? transferenciaCopiable_[key] : "";
+      if (!value) return;
+      const label = key === "clabe" ? "CLABE copiada." : "Datos de transferencia copiados.";
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value)
+          .then(function(){ mostrarMensaje_(label, "ok"); })
+          .catch(function(){ mostrarMensaje_("No se pudo copiar automáticamente. Mantén presionado el dato para copiarlo.", "error"); });
+      } else {
+        mostrarMensaje_("Mantén presionado el dato para copiarlo.", "ok");
       }
     }
 

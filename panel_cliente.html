@@ -937,7 +937,7 @@
               autocomplete="name"
               list="clientesSugeridos"
               placeholder="Ej. Angelica Hernandez"
-              onblur="sincronizarClienteNombre_(); cargarPromocionFrecuenteCliente_()"
+              onblur="sincronizarClienteNombre_(); cargarPromocionFrecuenteCliente_(); onClienteNombreChange_()"
             >
             <datalist id="clientesSugeridos"></datalist>
             <div class="helper-text">
@@ -988,7 +988,7 @@
         <div class="payment-help-head">
           <div class="payment-help-title">
             <strong>Pago por transferencia</strong>
-            <span class="auth-status">Consulta los datos solo si los necesitas.</span>
+            <span class="auth-status">Disponible al escribir tu nombre, consultar tu cuenta o armar un pedido.</span>
           </div>
           <button id="btnTransferencia" class="btn ghost compact" type="button" onclick="toggleDatosTransferencia_()">Ver datos</button>
         </div>
@@ -1161,6 +1161,7 @@
     let sesionCliente_ = null;
     let promocionFrecuenteCliente_ = null;
     let transferenciaCopiable_ = { clabe: "", completo: "" };
+    let miCuentaTieneMovimiento_ = false;
     const CLIENT_SESSION_STORAGE_KEY = "sistema_cocina_cliente_token";
     const CLIENT_CATALOG_STORAGE_PREFIX = "sistema_cocina_catalogo_";
     const CLIENT_CATALOG_MAX_AGE_MS = 5 * 60 * 1000;
@@ -1236,6 +1237,7 @@
         input.readOnly = loggedIn;
         input.value = loggedIn ? sesionCliente_.nombre : input.value;
       }
+      resetDatosTransferencia_();
       renderMiCuentaEstado_();
       mostrarAuthForm_("");
       cargarPromocionFrecuenteCliente_();
@@ -1286,6 +1288,14 @@
       const box = document.getElementById("transferenciaDatos");
       const btn = document.getElementById("btnTransferencia");
       if (!box) return;
+      const cliente = getClienteNombreActual_();
+      if (!cliente) {
+        box.innerHTML = "Escribe tu nombre o inicia sesión para consultar los datos de transferencia.";
+        box.classList.add("show");
+        if (btn) btn.textContent = "Ver datos";
+        mostrarMensaje_("Escribe tu nombre o inicia sesión para ver los datos de transferencia.", "error");
+        return;
+      }
       if (box.classList.contains("show")) {
         box.classList.remove("show");
         if (btn) btn.textContent = "Ver datos";
@@ -1297,6 +1307,25 @@
         return;
       }
       cargarDatosTransferencia_(true);
+    }
+
+    function getClienteNombreActual_(){
+      return sesionCliente_ ? sesionCliente_.nombre : String((document.getElementById("cliente") || {}).value || "").trim();
+    }
+
+    function resetDatosTransferencia_(){
+      const box = document.getElementById("transferenciaDatos");
+      const btn = document.getElementById("btnTransferencia");
+      transferenciaCopiable_ = { clabe: "", completo: "" };
+      if (box) {
+        box.innerHTML = "";
+        box.classList.remove("show");
+        box.removeAttribute("data-loaded");
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Ver datos";
+      }
     }
 
     function cargarDatosTransferencia_(mostrar){
@@ -1311,7 +1340,15 @@
         }
         return;
       }
-      const cliente = sesionCliente_ ? sesionCliente_.nombre : String((document.getElementById("cliente") || {}).value || "").trim();
+      const cliente = getClienteNombreActual_();
+      if (!cliente) {
+        if (shouldShow) {
+          box.innerHTML = "Escribe tu nombre o inicia sesión para consultar los datos de transferencia.";
+          box.classList.add("show");
+        }
+        if (btn) btn.textContent = "Ver datos";
+        return;
+      }
       box.innerHTML = "Consultando datos de transferencia...";
       if (shouldShow) box.classList.add("show");
       if (btn) {
@@ -1411,6 +1448,7 @@
       const saldoPendiente = Number(cuenta.saldoPendiente || 0);
       const cambioPendiente = Number(cuenta.cambioPendiente || 0);
       const saldoFavor = Number(cuenta.saldoFavor || 0);
+      miCuentaTieneMovimiento_ = pedidos.length > 0 || saldoPendiente > 0 || cambioPendiente > 0 || saldoFavor > 0;
       let html = "";
       html += "<div class='account-summary'>";
       html += "<div class='account-metric'><span>Saldo pendiente</span><strong>" + escapeHtml_(money_(saldoPendiente)) + "</strong></div>";
@@ -1449,6 +1487,10 @@
       html += "</div>";
       content.innerHTML = html;
       content.setAttribute("data-loaded", "1");
+      if (miCuentaTieneMovimiento_) {
+        resetDatosTransferencia_();
+        cargarDatosTransferencia_(true);
+      }
     }
 
     function cargarPromocionFrecuenteCliente_(){
@@ -1468,6 +1510,13 @@
           if (carrito.length) renderCarrito_();
         })
         .obtenerPromocionFrecuenteCliente(cliente, getClienteToken_());
+    }
+
+    function onClienteNombreChange_(){
+      resetDatosTransferencia_();
+      if (getClienteNombreActual_() && carrito.length) {
+        cargarDatosTransferencia_(true);
+      }
     }
 
     function restaurarSesionCliente_(done){
@@ -1551,6 +1600,8 @@
         input.readOnly = false;
         input.value = "";
       }
+      miCuentaTieneMovimiento_ = false;
+      resetDatosTransferencia_();
       aplicarSesionCliente_({ autenticado: false });
       mostrarMensaje_("Cerramos la sesión en este dispositivo.", "ok");
       if (!token) return;
@@ -2211,7 +2262,11 @@ function renderCocinaHeader_(nombreCocina) {
         total,
         promo
       );
-      cargarDatosTransferencia_(true);
+      if (getClienteNombreActual_()) {
+        cargarDatosTransferencia_(true);
+      } else {
+        resetDatosTransferencia_();
+      }
       updateDisponibilidadGuisado_();
       updateDisponibilidadSalsa_();
       mostrarMensaje_("", "");
@@ -2846,6 +2901,7 @@ function renderCocinaHeader_(nombreCocina) {
           btn.disabled = false;
           carrito = [];
           renderCarrito_();
+          resetDatosTransferencia_();
           cargarDatosTransferencia_(true);
           document.getElementById("cliente").value = sesionCliente_ ? sesionCliente_.nombre : "";
           const folio = res && res.folioCarrito ? res.folioCarrito : "";

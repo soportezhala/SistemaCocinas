@@ -284,6 +284,10 @@
       gap: 10px;
     }
 
+    .payment-help.is-hidden {
+      display: none;
+    }
+
     .payment-help-head {
       display: flex;
       align-items: center;
@@ -984,11 +988,11 @@
       <div id="promoTip" class="notice ok"></div>
       <div id="variedadTip" class="notice tip"></div>
 
-      <div class="payment-help">
+      <div id="paymentHelp" class="payment-help is-hidden">
         <div class="payment-help-head">
           <div class="payment-help-title">
             <strong>Pago por transferencia</strong>
-            <span class="auth-status">Disponible al escribir tu nombre, consultar tu cuenta o armar un pedido.</span>
+            <span class="auth-status">Disponible cuando tengas un pedido o consultes tu cuenta.</span>
           </div>
           <button id="btnTransferencia" class="btn ghost compact" type="button" onclick="toggleDatosTransferencia_()">Ver datos</button>
         </div>
@@ -1162,6 +1166,7 @@
     let promocionFrecuenteCliente_ = null;
     let transferenciaCopiable_ = { clabe: "", completo: "" };
     let miCuentaTieneMovimiento_ = false;
+    let transferenciaPostPedido_ = false;
     const CLIENT_SESSION_STORAGE_KEY = "sistema_cocina_cliente_token";
     const CLIENT_CATALOG_STORAGE_PREFIX = "sistema_cocina_catalogo_";
     const CLIENT_CATALOG_MAX_AGE_MS = 5 * 60 * 1000;
@@ -1238,6 +1243,7 @@
         input.value = loggedIn ? sesionCliente_.nombre : input.value;
       }
       resetDatosTransferencia_();
+      updateTransferenciaVisibility_();
       renderMiCuentaEstado_();
       mostrarAuthForm_("");
       cargarPromocionFrecuenteCliente_();
@@ -1288,12 +1294,9 @@
       const box = document.getElementById("transferenciaDatos");
       const btn = document.getElementById("btnTransferencia");
       if (!box) return;
-      const cliente = getClienteNombreActual_();
-      if (!cliente) {
-        box.innerHTML = "Escribe tu nombre o inicia sesión para consultar los datos de transferencia.";
-        box.classList.add("show");
-        if (btn) btn.textContent = "Ver datos";
-        mostrarMensaje_("Escribe tu nombre o inicia sesión para ver los datos de transferencia.", "error");
+      if (!hasTransferenciaContexto_()) {
+        updateTransferenciaVisibility_();
+        mostrarMensaje_("Agrega tu nombre y un pedido, o consulta Mi cuenta, para ver los datos de transferencia.", "error");
         return;
       }
       if (box.classList.contains("show")) {
@@ -1311,6 +1314,17 @@
 
     function getClienteNombreActual_(){
       return sesionCliente_ ? sesionCliente_.nombre : String((document.getElementById("cliente") || {}).value || "").trim();
+    }
+
+    function hasTransferenciaContexto_(){
+      return !!getClienteNombreActual_() && (carrito.length > 0 || miCuentaTieneMovimiento_ || transferenciaPostPedido_);
+    }
+
+    function updateTransferenciaVisibility_(){
+      const card = document.getElementById("paymentHelp");
+      const visible = hasTransferenciaContexto_();
+      if (card) card.classList.toggle("is-hidden", !visible);
+      if (!visible) resetDatosTransferencia_();
     }
 
     function resetDatosTransferencia_(){
@@ -1333,6 +1347,11 @@
       const btn = document.getElementById("btnTransferencia");
       if (!box) return;
       const shouldShow = mostrar !== false;
+      if (!hasTransferenciaContexto_()) {
+        updateTransferenciaVisibility_();
+        return;
+      }
+      updateTransferenciaVisibility_();
       if (box.getAttribute("data-loaded") === "1") {
         if (shouldShow) {
           box.classList.add("show");
@@ -1341,14 +1360,6 @@
         return;
       }
       const cliente = getClienteNombreActual_();
-      if (!cliente) {
-        if (shouldShow) {
-          box.innerHTML = "Escribe tu nombre o inicia sesión para consultar los datos de transferencia.";
-          box.classList.add("show");
-        }
-        if (btn) btn.textContent = "Ver datos";
-        return;
-      }
       box.innerHTML = "Consultando datos de transferencia...";
       if (shouldShow) box.classList.add("show");
       if (btn) {
@@ -1489,7 +1500,10 @@
       content.setAttribute("data-loaded", "1");
       if (miCuentaTieneMovimiento_) {
         resetDatosTransferencia_();
+        updateTransferenciaVisibility_();
         cargarDatosTransferencia_(true);
+      } else {
+        updateTransferenciaVisibility_();
       }
     }
 
@@ -1514,7 +1528,8 @@
 
     function onClienteNombreChange_(){
       resetDatosTransferencia_();
-      if (getClienteNombreActual_() && carrito.length) {
+      updateTransferenciaVisibility_();
+      if (hasTransferenciaContexto_()) {
         cargarDatosTransferencia_(true);
       }
     }
@@ -1601,7 +1616,9 @@
         input.value = "";
       }
       miCuentaTieneMovimiento_ = false;
+      transferenciaPostPedido_ = false;
       resetDatosTransferencia_();
+      updateTransferenciaVisibility_();
       aplicarSesionCliente_({ autenticado: false });
       mostrarMensaje_("Cerramos la sesión en este dispositivo.", "ok");
       if (!token) return;
@@ -1856,6 +1873,7 @@ function updateDisponibilidadSalsa_(){
 
     // Catálogo y sesión son independientes: cargarlos en paralelo evita sumar
     // dos viajes consecutivos a Apps Script al abrir el panel.
+    updateTransferenciaVisibility_();
     cargarCatalogo_();
     restaurarSesionCliente_();
 
@@ -2233,6 +2251,7 @@ function renderCocinaHeader_(nombreCocina) {
         target.innerHTML = "<div class='empty'>Aun no has agregado productos.</div>";
         setCarritoTotales_(0, null);
         document.getElementById("total").textContent = money_(0);
+        updateTransferenciaVisibility_();
         updateDisponibilidadGuisado_();
         updateDisponibilidadSalsa_();
         return;
@@ -2262,7 +2281,8 @@ function renderCocinaHeader_(nombreCocina) {
         total,
         promo
       );
-      if (getClienteNombreActual_()) {
+      updateTransferenciaVisibility_();
+      if (hasTransferenciaContexto_()) {
         cargarDatosTransferencia_(true);
       } else {
         resetDatosTransferencia_();
@@ -2899,9 +2919,11 @@ function renderCocinaHeader_(nombreCocina) {
         })
         .withSuccessHandler(function(res){
           btn.disabled = false;
+          transferenciaPostPedido_ = true;
           carrito = [];
           renderCarrito_();
           resetDatosTransferencia_();
+          updateTransferenciaVisibility_();
           cargarDatosTransferencia_(true);
           document.getElementById("cliente").value = sesionCliente_ ? sesionCliente_.nombre : "";
           const folio = res && res.folioCarrito ? res.folioCarrito : "";

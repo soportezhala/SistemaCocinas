@@ -570,6 +570,7 @@
     let autoRefresh = false;
     let autoTimer = null;
     let loading = false;
+    let savingCount = 0;
 
     document.addEventListener("DOMContentLoaded", inicializar_);
 
@@ -758,6 +759,7 @@
     function toggleArmadoCheck_(clientIdx, itemIdx, unitIndex, checked) {
       const payload = getPedidoPayload_(clientIdx, itemIdx);
       if (!payload) return;
+      applyArmadoCheckLocal_(clientIdx, itemIdx, unitIndex, checked);
       actualizarArmado_({
         action: "saveArmadoCheck",
         semana: getFiltros_().semana,
@@ -765,13 +767,15 @@
         cliente: payload.cliente,
         pedidoId: payload.item.idPedido,
         unitIndex: unitIndex,
-        empacado: checked
+        empacado: checked,
+        skipRefresh: true
       });
     }
 
     function setArmadoItemChecks_(clientIdx, itemIdx, checked) {
       const payload = getPedidoPayload_(clientIdx, itemIdx);
       if (!payload) return;
+      applyArmadoItemLocal_(clientIdx, itemIdx, checked);
       actualizarArmado_({
         action: "saveArmadoItemChecks",
         semana: getFiltros_().semana,
@@ -779,7 +783,8 @@
         cliente: payload.cliente,
         pedidoId: payload.item.idPedido,
         totalUnits: payload.item.unitCount,
-        empacado: checked
+        empacado: checked,
+        skipRefresh: true
       });
     }
 
@@ -792,33 +797,86 @@
       const pedidos = cliente.items.map(function(item){
         return { idPedido: item.idPedido, totalUnits: item.unitCount };
       }).filter(function(item){ return item.idPedido && item.totalUnits; });
+      applyArmadoClienteLocal_(clientIdx, checked);
       actualizarArmado_({
         action: "saveArmadoClienteChecks",
         semana: getFiltros_().semana,
         filtros: getFiltros_(),
         cliente: cliente.cliente,
         pedidos: pedidos,
-        empacado: checked
+        empacado: checked,
+        skipRefresh: true
       });
     }
 
+    function recalcArmadoItem_(item) {
+      if (!item) return;
+      const checks = Array.isArray(item.unitChecks) ? item.unitChecks : [];
+      item.unitCount = checks.length || Number(item.unitCount || 0);
+      item.packedCount = checks.reduce(function(total, check){ return total + (check.empacado ? 1 : 0); }, 0);
+      item.fullyPacked = Number(item.unitCount || 0) > 0 && Number(item.packedCount || 0) >= Number(item.unitCount || 0);
+    }
+
+    function recalcArmadoCliente_(cliente) {
+      if (!cliente) return;
+      const items = Array.isArray(cliente.items) ? cliente.items : [];
+      cliente.totalUnidades = items.reduce(function(total, item){ return total + Number(item.unitCount || 0); }, 0);
+      cliente.totalEmpacadas = items.reduce(function(total, item){ return total + Number(item.packedCount || 0); }, 0);
+      cliente.fullyPacked = Number(cliente.totalUnidades || 0) > 0 && Number(cliente.totalEmpacadas || 0) >= Number(cliente.totalUnidades || 0);
+    }
+
+    function applyArmadoCheckLocal_(clientIdx, itemIdx, unitIndex, checked) {
+      const cliente = armadoData[clientIdx];
+      const item = cliente && cliente.items ? cliente.items[itemIdx] : null;
+      if (!item || !Array.isArray(item.unitChecks)) return;
+      item.unitChecks.forEach(function(check){
+        if (Number(check.index || 0) === Number(unitIndex || 0)) check.empacado = !!checked;
+      });
+      recalcArmadoItem_(item);
+      recalcArmadoCliente_(cliente);
+      renderArmado_();
+    }
+
+    function applyArmadoItemLocal_(clientIdx, itemIdx, checked) {
+      const cliente = armadoData[clientIdx];
+      const item = cliente && cliente.items ? cliente.items[itemIdx] : null;
+      if (!item || !Array.isArray(item.unitChecks)) return;
+      item.unitChecks.forEach(function(check){ check.empacado = !!checked; });
+      recalcArmadoItem_(item);
+      recalcArmadoCliente_(cliente);
+      renderArmado_();
+    }
+
+    function applyArmadoClienteLocal_(clientIdx, checked) {
+      const cliente = armadoData[clientIdx];
+      if (!cliente || !Array.isArray(cliente.items)) return;
+      cliente.items.forEach(function(item){
+        if (Array.isArray(item.unitChecks)) {
+          item.unitChecks.forEach(function(check){ check.empacado = !!checked; });
+        }
+        recalcArmadoItem_(item);
+      });
+      recalcArmadoCliente_(cliente);
+      renderArmado_();
+    }
+
     function actualizarArmado_(payload) {
-      loading = true;
-      document.body.classList.add("loading");
-      setMensaje_("Guardando avance...", "warn");
+      savingCount++;
+      setMensaje_(savingCount > 1 ? ("Guardando " + savingCount + " cambios...") : "Guardando avance...", "warn");
       api_(payload)
       .then(function(data){
-        armadoData = Array.isArray(data.pedidos) ? data.pedidos : [];
+        if (Array.isArray(data.pedidos)) {
+          armadoData = data.pedidos;
+          renderArmado_();
+        }
         setMensaje_("Avance guardado.", "ok", 1400);
-        renderArmado_();
       })
       .catch(function(err){
         setMensaje_("No se pudo guardar: " + getErrorMessage_(err), "error");
         cargarArmado_();
       })
       .finally(function(){
-        loading = false;
-        document.body.classList.remove("loading");
+        savingCount = Math.max(0, savingCount - 1);
       });
     }
 
@@ -909,7 +967,7 @@
       }
       if (autoRefresh) {
         autoTimer = setInterval(function(){
-          if (!loading) cargarArmado_();
+          if (!loading && !savingCount) cargarArmado_();
         }, 30000);
       }
     }

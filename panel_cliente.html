@@ -2237,8 +2237,9 @@ function renderCocinaHeader_(nombreCocina) {
     function renderCarrito_(){
       const target = document.getElementById("carritoItems");
       const combo = detectarComboSugerido_();
-      const promociones = detectarPromocionesCliente_();
-      const promo = seleccionarMejorPromocionCliente_(promociones);
+      const benefit = seleccionarBeneficioCliente_();
+      const promociones = benefit.promociones || [];
+      const promo = benefit.displayPromo || null;
       let total = 0;
       mostrarComboTip_(combo);
       mostrarPromoTip_(promo, promociones);
@@ -2277,10 +2278,7 @@ function renderCocinaHeader_(nombreCocina) {
           + "<div class='cart-actions'><strong>" + money_(subtotal) + "</strong>" + botonQuitar + "</div>"
           + "</div>";
       }).join("");
-      setCarritoTotales_(
-        total,
-        promo
-      );
+      setCarritoTotales_(benefit.subtotalBase || total, promo);
       updateTransferenciaVisibility_();
       if (hasTransferenciaContexto_()) {
         cargarDatosTransferencia_(true);
@@ -2407,6 +2405,16 @@ function renderCocinaHeader_(nombreCocina) {
         const sugerencia = sugerenciaPromo ? sugerenciaPromo.mensaje : "";
         el.className = sugerencia ? "notice tip show" : "notice tip";
         el.innerHTML = sugerencia ? ("<div class='notice-content'><strong>Promociones disponibles</strong><br>" + escapeHtml_(sugerencia) + "</div>") : "";
+        return;
+      }
+      if (promo.kind === "BENEFICIO_COMBO") {
+        el.innerHTML = ""
+          + "<div class='notice-content'>"
+          + "<div><strong>Ahorro por combo aplicado.</strong><br>"
+          + "No se suma otra promoción para cuidar que solo tengas un beneficio automático por pedido.</div>"
+          + "<div><strong>Ahorro:</strong> " + money_(promo.descuentoTotal) + "</div>"
+          + "</div>";
+        el.className = "notice ok show";
         return;
       }
       el.innerHTML = ""
@@ -2801,6 +2809,144 @@ function renderCocinaHeader_(nombreCocina) {
       return Number(pres && pres.precio || 0);
     }
 
+    function expandComboItemsCliente_(items){
+      const expanded = [];
+      let currentSubtotal = 0;
+      let expandedSubtotal = 0;
+      let comboSavings = 0;
+      (Array.isArray(items) ? items : []).forEach(function(item){
+        const cantidad = Math.max(0, Number(item.cantidad || 0));
+        if (!(cantidad > 0)) return;
+        const currentItemSubtotal = Number(item.precio || 0) * cantidad;
+        currentSubtotal += currentItemSubtotal;
+        if (item.producto !== "Combo" || (!item.comboGuisado && !item.comboSalsa && !item.comboTortillas)) {
+          expanded.push(Object.assign({}, item));
+          expandedSubtotal += currentItemSubtotal;
+          return;
+        }
+
+        const origen = item.comboOrigen || {};
+        const guisadoPres = origen.guisadoPresentacion || "1/2 litro";
+        const salsaPres = origen.salsaPresentacion || "Vaso 10oz";
+        const tortillaPres = origen.tortillaPresentacion || "1/2 kilo";
+        const guisadoTipo = origen.guisadoTipo || "";
+        let looseUnitTotal = 0;
+
+        if (item.comboGuisado) {
+          const precio = getCatalogPriceForItem_("Guisado", item.comboGuisado, guisadoTipo, guisadoPres);
+          looseUnitTotal += precio;
+          expanded.push({
+            id: uid_(),
+            cocina: "La Cocina de Susy",
+            producto: "Guisado",
+            receta: item.comboGuisado,
+            tipo: guisadoTipo,
+            presentacion: guisadoPres,
+            cantidad: cantidad,
+            precio: precio,
+            label: "Guisado - " + item.comboGuisado
+          });
+        }
+        if (item.comboSalsa) {
+          const precio = getCatalogPriceForItem_("Salsa", item.comboSalsa, "", salsaPres);
+          looseUnitTotal += precio;
+          expanded.push({
+            id: uid_(),
+            cocina: "La Cocina de Susy",
+            producto: "Salsa",
+            receta: item.comboSalsa,
+            tipo: "",
+            presentacion: salsaPres,
+            cantidad: cantidad,
+            precio: precio,
+            label: "Salsa - " + item.comboSalsa
+          });
+        }
+        if (item.comboTortillas) {
+          const productoT = norm_(item.comboTortillas).indexOf("sope") >= 0 ? "Sope" : "Huarache";
+          const presT = productoT === "Sope" ? "1 docena" : "1/2 docena";
+          const precio = getCatalogPriceForItem_(productoT, "", "", presT);
+          looseUnitTotal += precio;
+          expanded.push({
+            id: uid_(),
+            cocina: "Tortillas La Má",
+            producto: productoT,
+            receta: "",
+            tipo: "",
+            presentacion: presT,
+            cantidad: cantidad,
+            precio: precio,
+            label: productoT + " - " + presT
+          });
+        } else if (tortillaPres) {
+          const precio = getCatalogPriceForItem_("Tortilla", "", "", tortillaPres);
+          looseUnitTotal += precio;
+          expanded.push({
+            id: uid_(),
+            cocina: "Tortillas La Má",
+            producto: "Tortilla",
+            receta: "",
+            tipo: "",
+            presentacion: tortillaPres,
+            cantidad: cantidad,
+            precio: precio,
+            label: "Tortilla - " + tortillaPres
+          });
+        }
+
+        const looseSubtotal = looseUnitTotal * cantidad;
+        expandedSubtotal += looseSubtotal;
+        comboSavings += Math.max(0, looseSubtotal - currentItemSubtotal);
+      });
+      return {
+        items: expanded,
+        comboSavings: Math.max(0, Math.round(comboSavings)),
+        currentSubtotal: round_(currentSubtotal, 2),
+        expandedSubtotal: round_(expandedSubtotal, 2)
+      };
+    }
+
+    function withCarritoTemporal_(items, fn){
+      const original = carrito;
+      carrito = items;
+      try {
+        return fn();
+      } finally {
+        carrito = original;
+      }
+    }
+
+    function seleccionarBeneficioCliente_(){
+      const expanded = expandComboItemsCliente_(carrito);
+      const promociones = withCarritoTemporal_(expanded.items, function(){
+        return detectarPromocionesCliente_();
+      });
+      const promo = seleccionarMejorPromocionCliente_(promociones);
+      const promoDiscount = promo && promo.aplica ? Math.max(0, Math.round(Number(promo.descuentoTotal || 0))) : 0;
+      const comboSavings = Math.max(0, Math.round(Number(expanded.comboSavings || 0)));
+      if (comboSavings > 0 && comboSavings >= promoDiscount) {
+        return {
+          tipo: "COMBO",
+          itemsParaEnviar: carrito,
+          promociones: promociones,
+          subtotalBase: expanded.expandedSubtotal,
+          displayPromo: {
+            aplica: true,
+            kind: "BENEFICIO_COMBO",
+            nombrePromo: "Ahorro por combo",
+            descuentoTotal: comboSavings
+          }
+        };
+      }
+      return {
+        tipo: promoDiscount > 0 ? "PROMO" : "NINGUNO",
+        itemsParaEnviar: comboSavings > 0 && promoDiscount > comboSavings ? expanded.items : carrito,
+        promociones: promociones,
+        subtotalBase: comboSavings > 0 && promoDiscount > comboSavings ? expanded.expandedSubtotal : expanded.currentSubtotal,
+        displayPromo: promoDiscount > 0 ? promo : null
+      };
+    }
+
     function convertirComboSugerido_(){
       const comboPlan = detectarComboSugerido_();
       if (!comboPlan || !comboPlan.combos || !comboPlan.combos.length) return;
@@ -2907,7 +3053,9 @@ function renderCocinaHeader_(nombreCocina) {
       if (!cliente) return mostrarMensaje_("Escribe tu nombre para poder enviar el pedido.", "error");
       if (!carrito.length) return mostrarMensaje_("Agrega al menos un producto al carrito.", "error");
 
-      const payload = carrito.map(function(item){
+      const benefit = seleccionarBeneficioCliente_();
+      const payloadItems = benefit.itemsParaEnviar || carrito;
+      const payload = payloadItems.map(function(item){
         return Object.assign({}, item, { comboSugerido: combo ? combo.comboName : "" });
       });
 

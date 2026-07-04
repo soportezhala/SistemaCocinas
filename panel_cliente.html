@@ -786,6 +786,10 @@
         callApi({ action: "obtenerCatalogoCliente", dia }, this);
       },
 
+      obtenerCatalogoClienteBase(dia) {
+        callApi({ action: "obtenerCatalogoClienteBase", dia }, this);
+      },
+
       obtenerDisponibilidadCliente(dia) {
         callApi({ action: "obtenerDisponibilidadCliente", dia }, this);
       },
@@ -1173,6 +1177,7 @@
     const transferenciaCache_ = {};
     const CLIENT_SESSION_STORAGE_KEY = "sistema_cocina_cliente_token";
     const CLIENT_CATALOG_STORAGE_PREFIX = "sistema_cocina_catalogo_";
+    const CLIENT_CATALOG_CACHE_VERSION = "v3";
     const CLIENT_CATALOG_MAX_AGE_MS = 5 * 60 * 1000;
     const CLIENT_PROMO_MAX_AGE_MS = 60 * 1000;
     const CLIENT_TRANSFER_MAX_AGE_MS = 10 * 60 * 1000;
@@ -1189,8 +1194,17 @@
       } catch (err) {}
     }
 
+    function getCatalogCacheDayBucket_(){
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
     function getCatalogCacheKey_(dia){
-      return CLIENT_CATALOG_STORAGE_PREFIX + String(dia || "").trim().toLowerCase();
+      const diaKey = String(dia || "").trim().toLowerCase();
+      return `${CLIENT_CATALOG_STORAGE_PREFIX}${CLIENT_CATALOG_CACHE_VERSION}_${getCatalogCacheDayBucket_()}_${diaKey}`;
     }
 
     function getTimedCache_(map, key, maxAge){
@@ -1933,12 +1947,21 @@ function updateDisponibilidadSalsa_(){
       cargarCatalogo_();
     }
 
+    function refrescarDisponibilidadInicial_(){
+      refrescarDisponibilidadCliente_(function(){
+        updatePedidoAvailabilityUI_();
+        updateDisponibilidadGuisado_();
+        updateDisponibilidadSalsa_();
+      });
+    }
+
     function cargarCatalogo_(){
       const dia = document.getElementById("dia") ? document.getElementById("dia").value : "";
       const cached = readCatalogCache_(dia);
       const requestId = ++catalogRequestSeq_;
       if (cached) {
         aplicarCatalogoCliente_(cached, true);
+        refrescarDisponibilidadInicial_();
       }
       google.script.run
         .withFailureHandler(function(err){
@@ -1951,8 +1974,9 @@ function updateDisponibilidadSalsa_(){
         if (requestId !== catalogRequestSeq_) return;
         writeCatalogCache_(dia, data || {});
         aplicarCatalogoCliente_(data, false);
+        if (!cached) refrescarDisponibilidadInicial_();
       })
-        .obtenerDatosCliente(dia);
+        .obtenerCatalogoClienteBase(dia);
     }
 
     function aplicarCatalogoCliente_(data, fromCache){
@@ -1963,7 +1987,7 @@ function updateDisponibilidadSalsa_(){
         catalogoCliente = Object.assign({}, catalogoCliente, { availability: null });
       }
       ventanaPedido = (catalogoCliente || {}).ventanaPedido || { abierta: true };
-      if (!fromCache) ultimaActualizacionDisponibilidad_ = Date.now();
+      if (!fromCache) ultimaActualizacionDisponibilidad_ = (catalogoCliente || {}).availability ? Date.now() : 0;
       hydrateClientes_((catalogoCliente || {}).clientes || []);
       renderMenuInfo_();
       renderTortillas_();

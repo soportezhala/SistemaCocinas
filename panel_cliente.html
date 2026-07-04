@@ -1177,7 +1177,7 @@
     const transferenciaCache_ = {};
     const CLIENT_SESSION_STORAGE_KEY = "sistema_cocina_cliente_token";
     const CLIENT_CATALOG_STORAGE_PREFIX = "sistema_cocina_catalogo_";
-    const CLIENT_CATALOG_CACHE_VERSION = "v3";
+    const CLIENT_CATALOG_CACHE_VERSION = "v4";
     const CLIENT_CATALOG_MAX_AGE_MS = 5 * 60 * 1000;
     const CLIENT_PROMO_MAX_AGE_MS = 60 * 1000;
     const CLIENT_TRANSFER_MAX_AGE_MS = 10 * 60 * 1000;
@@ -1702,38 +1702,58 @@ const COCINAS_UI = {
 /**
  * Devuelve litros restantes para un producto (guisado o salsa)
  */
+function getAvailabilityKey_(tipo, receta) {
+  const nombre = String(receta || "").trim();
+  if (!nombre) return "";
+  if (tipo !== "guisados") return nombre;
+  const a = catalogoCliente && catalogoCliente.availability ? catalogoCliente.availability : null;
+  const map = (a && a.guisadoBasesProduccion) || (catalogoCliente && catalogoCliente.guisadoBasesProduccion) || {};
+  return String(map[nombre] || nombre).trim() || nombre;
+}
+
+function getAvailabilityLabel_(tipo, receta) {
+  const key = getAvailabilityKey_(tipo, receta);
+  const nombre = String(receta || "").trim();
+  if (tipo === "guisados" && key && key !== nombre) return nombre + " (base " + key + ")";
+  return nombre;
+}
+
 function getLitrosRestantes_(tipo, receta) {
   if (!catalogoCliente || !catalogoCliente.availability) return Infinity;
 
   const a = catalogoCliente.availability;
-  const capacidad = (a.capacidadLitros?.[tipo]?.[receta]) || 0;
+  const key = getAvailabilityKey_(tipo, receta);
+  const capacidad = (a.capacidadLitros?.[tipo]?.[key]) || 0;
   if (!(capacidad > 0)) return Infinity;
-  const usados = ((a.consumoLitros?.[tipo]?.[receta]) || 0) + getLitrosEnCarrito_(tipo, receta);
+  const usados = ((a.consumoLitros?.[tipo]?.[key]) || 0) + getLitrosEnCarrito_(tipo, receta);
 
   return Math.max(0, capacidad - usados);
 }
 
 function getLitrosCapacidad_(tipo, receta) {
   const a = catalogoCliente && catalogoCliente.availability ? catalogoCliente.availability : null;
-  return a ? Number((a.capacidadLitros?.[tipo]?.[receta]) || 0) : 0;
+  const key = getAvailabilityKey_(tipo, receta);
+  return a ? Number((a.capacidadLitros?.[tipo]?.[key]) || 0) : 0;
 }
 
 function getLitrosComprometidos_(tipo, receta) {
   const a = catalogoCliente && catalogoCliente.availability ? catalogoCliente.availability : null;
-  return a ? Number((a.consumoLitros?.[tipo]?.[receta]) || 0) : 0;
+  const key = getAvailabilityKey_(tipo, receta);
+  return a ? Number((a.consumoLitros?.[tipo]?.[key]) || 0) : 0;
 }
 
 function getLitrosEnCarrito_(tipo, receta) {
+  const targetKey = getAvailabilityKey_(tipo, receta);
   return carrito.reduce(function(total, item){
     if (!item) return total;
     if (item.producto === "Combo") {
-      if (tipo === "guisados" && item.comboGuisado === receta) return total + (0.5 * Number(item.cantidad || 0));
-      if (tipo === "salsas" && item.comboSalsa === receta) return total + (0.3 * Number(item.cantidad || 0));
+      if (tipo === "guisados" && getAvailabilityKey_(tipo, item.comboGuisado) === targetKey) return total + (0.5 * Number(item.cantidad || 0));
+      if (tipo === "salsas" && getAvailabilityKey_(tipo, item.comboSalsa) === targetKey) return total + (0.3 * Number(item.cantidad || 0));
       return total;
     }
-    if (item.receta !== receta) return total;
     if (tipo === "guisados" && item.producto !== "Guisado") return total;
     if (tipo === "salsas" && item.producto !== "Salsa") return total;
+    if (getAvailabilityKey_(tipo, item.receta) !== targetKey) return total;
     return total + litrosPorPresentacion_(item.presentacion) * Number(item.cantidad || 0);
   }, 0);
 }
@@ -1778,6 +1798,8 @@ function buildDisponibilidadInfo_(tipo, receta, presentacion, cantidad) {
   const max = litrosUnidad ? Math.floor(restanteAntes / litrosUnidad) : 0;
   const sugerida = sugerirPresentacionDisponible_(restanteAntes, presentacion);
   return {
+    key: getAvailabilityKey_(tipo, receta),
+    label: getAvailabilityLabel_(tipo, receta),
     capacidad: capacidad,
     comprometidos: comprometidos,
     requerido: requerido,
@@ -1801,8 +1823,8 @@ function buildDisponibilidadInfo_(tipo, receta, presentacion, cantidad) {
   if (max <= 0) {
     const sugerencia = info.sugerida ? " Puedes intentar con " + info.sugerida + "." : "";
     const baseMsg = info.restanteAntes > 0
-      ? "No alcanza disponibilidad para " + presentacion + " de " + receta + "."
-      : receta + " ya alcanzó el límite de disponibilidad para el día seleccionado.";
+      ? "No alcanza disponibilidad para " + presentacion + " de " + info.label + "."
+      : info.label + " ya alcanzó el límite de disponibilidad para el día seleccionado.";
     mostrarMensaje_(
       baseMsg + sugerencia,
       "error"
@@ -1813,7 +1835,7 @@ function buildDisponibilidadInfo_(tipo, receta, presentacion, cantidad) {
   if (cantidad > max) {
     const sugerencia = info.sugerida ? " Presentación sugerida disponible: " + info.sugerida + "." : "";
     mostrarMensaje_(
-      "Cantidad no disponible para " + receta + ". Tiene " + info.capacidad.toFixed(2) +
+      "Cantidad no disponible para " + info.label + ". Tiene " + info.capacidad.toFixed(2) +
       " L de límite, " + info.comprometidos.toFixed(2) + " L comprometidos y esta selección requiere " +
       info.requerido.toFixed(2) + " L." + sugerencia,
       "warning"
@@ -1824,7 +1846,7 @@ function buildDisponibilidadInfo_(tipo, receta, presentacion, cantidad) {
   if (info.restanteDespues <= 1) {
     const sugerencia = info.sugerida ? " Si necesitas ajustar, la presentación disponible más alta es " + info.sugerida + "." : "";
     mostrarMensaje_(
-      "Disponibilidad limitada para " + receta + ". Quedarán " + info.restanteDespues.toFixed(2) +
+      "Disponibilidad limitada para " + info.label + ". Quedarán " + info.restanteDespues.toFixed(2) +
       " L después de esta selección." + sugerencia,
       "warning"
     );
@@ -1847,12 +1869,12 @@ function renderDisponibilidadProducto_(targetId, tipo, receta, presentacion, can
   }
   if (info.requerido > info.restanteAntes) {
     el.textContent = "No alcanza para esta selección. Disponible: " + info.restanteAntes.toFixed(2) +
-      " L. " + (info.sugerida ? "Prueba con " + info.sugerida + "." : "Elige otro guisado.");
+      " L para " + info.label + ". " + (info.sugerida ? "Prueba con " + info.sugerida + "." : "Elige otro guisado.");
     return;
   }
   if (info.restanteDespues <= 1) {
     el.textContent = "Disponibilidad limitada: quedarán " + info.restanteDespues.toFixed(2) +
-      " L de " + info.capacidad.toFixed(2) + " L. " + (info.sugerida ? "Mayor presentación disponible: " + info.sugerida + "." : "");
+      " L de " + info.capacidad.toFixed(2) + " L para " + info.label + ". " + (info.sugerida ? "Mayor presentación disponible: " + info.sugerida + "." : "");
     return;
   }
   el.textContent = "";

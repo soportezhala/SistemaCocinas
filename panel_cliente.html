@@ -1167,9 +1167,15 @@
     let transferenciaCopiable_ = { clabe: "", completo: "" };
     let miCuentaTieneMovimiento_ = false;
     let transferenciaPostPedido_ = false;
+    let catalogRequestSeq_ = 0;
+    let promoFrecuenteRequestSeq_ = 0;
+    const promoFrecuenteCache_ = {};
+    const transferenciaCache_ = {};
     const CLIENT_SESSION_STORAGE_KEY = "sistema_cocina_cliente_token";
     const CLIENT_CATALOG_STORAGE_PREFIX = "sistema_cocina_catalogo_";
     const CLIENT_CATALOG_MAX_AGE_MS = 5 * 60 * 1000;
+    const CLIENT_PROMO_MAX_AGE_MS = 60 * 1000;
+    const CLIENT_TRANSFER_MAX_AGE_MS = 10 * 60 * 1000;
 
     function getClienteToken_(){
       try { return localStorage.getItem(CLIENT_SESSION_STORAGE_KEY) || ""; }
@@ -1185,6 +1191,17 @@
 
     function getCatalogCacheKey_(dia){
       return CLIENT_CATALOG_STORAGE_PREFIX + String(dia || "").trim().toLowerCase();
+    }
+
+    function getTimedCache_(map, key, maxAge){
+      const entry = map && map[key];
+      if (!entry || (Date.now() - Number(entry.timestamp || 0)) > maxAge) return null;
+      return entry.data || null;
+    }
+
+    function setTimedCache_(map, key, data){
+      if (!map || !key) return;
+      map[key] = { timestamp: Date.now(), data: data };
     }
 
     function readCatalogCache_(dia){
@@ -1360,6 +1377,16 @@
         return;
       }
       const cliente = getClienteNombreActual_();
+      const cacheKey = norm_(cliente);
+      const cached = getTimedCache_(transferenciaCache_, cacheKey, CLIENT_TRANSFER_MAX_AGE_MS);
+      if (cached) {
+        renderDatosTransferencia_(cached);
+        if (shouldShow) {
+          box.classList.add("show");
+          if (btn) btn.textContent = "Ocultar";
+        }
+        return;
+      }
       box.innerHTML = "Consultando datos de transferencia...";
       if (shouldShow) box.classList.add("show");
       if (btn) {
@@ -1381,6 +1408,7 @@
             btn.disabled = false;
             btn.textContent = "Ocultar";
           }
+          setTimedCache_(transferenciaCache_, cacheKey, data || {});
           renderDatosTransferencia_(data || {});
           if (shouldShow) box.classList.add("show");
         })
@@ -1514,13 +1542,24 @@
         if (carrito.length) renderCarrito_();
         return;
       }
+      const cacheKey = norm_(cliente) + "|" + String(getClienteToken_() || "");
+      const cached = getTimedCache_(promoFrecuenteCache_, cacheKey, CLIENT_PROMO_MAX_AGE_MS);
+      if (cached) {
+        promocionFrecuenteCliente_ = cached;
+        if (carrito.length) renderCarrito_();
+        return;
+      }
+      const requestId = ++promoFrecuenteRequestSeq_;
       google.script.run
         .withFailureHandler(function(){
+          if (requestId !== promoFrecuenteRequestSeq_) return;
           promocionFrecuenteCliente_ = null;
           if (carrito.length) renderCarrito_();
         })
         .withSuccessHandler(function(info){
+          if (requestId !== promoFrecuenteRequestSeq_) return;
           promocionFrecuenteCliente_ = info || null;
+          setTimedCache_(promoFrecuenteCache_, cacheKey, promocionFrecuenteCliente_);
           if (carrito.length) renderCarrito_();
         })
         .obtenerPromocionFrecuenteCliente(cliente, getClienteToken_());
@@ -1897,16 +1936,19 @@ function updateDisponibilidadSalsa_(){
     function cargarCatalogo_(){
       const dia = document.getElementById("dia") ? document.getElementById("dia").value : "";
       const cached = readCatalogCache_(dia);
+      const requestId = ++catalogRequestSeq_;
       if (cached) {
         aplicarCatalogoCliente_(cached, true);
       }
       google.script.run
         .withFailureHandler(function(err){
+          if (requestId !== catalogRequestSeq_) return;
           if (!cached) {
             mostrarMensaje_("No se pudo cargar el catalogo: " + errorText_(err), "error");
           }
         })
       .withSuccessHandler(function(data){
+        if (requestId !== catalogRequestSeq_) return;
         writeCatalogCache_(dia, data || {});
         aplicarCatalogoCliente_(data, false);
       })
@@ -2313,6 +2355,30 @@ function renderCocinaHeader_(nombreCocina) {
       totalEl.textContent = money_(totalFinal);
     }
 
+    function getClientePromoConfig_(id){
+      const config = (catalogoCliente && catalogoCliente.promocionesConfig) || {};
+      return config[String(id || "").trim().toUpperCase()] || {};
+    }
+
+    function isClientePromoActiva_(id){
+      return getClientePromoConfig_(id).activo !== false;
+    }
+
+    function getClientePromoName_(id, fallback){
+      return getClientePromoConfig_(id).nombre || fallback || id;
+    }
+
+    function getClientePromoEscalon_(id, threshold, fallback){
+      const escalones = getClientePromoConfig_(id).escalones || {};
+      const amount = Number(escalones[String(threshold)] || 0);
+      return amount > 0 ? amount : fallback;
+    }
+
+    function getClientePromoFixed_(id, fallback){
+      const amount = Number(getClientePromoConfig_(id).descuento || 0);
+      return amount > 0 ? amount : fallback;
+    }
+
     function classifyPaqueteTipo_(tipo){
       const key = norm_(tipo);
       if (key.indexOf("premium") >= 0) return "premium";
@@ -2352,13 +2418,13 @@ function renderCocinaHeader_(nombreCocina) {
       const blocks = [];
       const premiumBlocks = Math.min(blocksCount, pools.premium.length);
       for (let i = 0; i < premiumBlocks; i++) {
-        blocks.push({ kind: "premium", discount: 25, units: [pools.premium.shift()] });
+        blocks.push({ kind: "premium", discount: getClientePromoEscalon_("PROMO_FAMILIAR", "premium", 25), units: [pools.premium.shift()] });
       }
       while (blocks.length < blocksCount && pools.con_carne.length) {
-        blocks.push({ kind: "mixto", discount: 20, units: [pools.con_carne.shift()] });
+        blocks.push({ kind: "mixto", discount: getClientePromoEscalon_("PROMO_FAMILIAR", "mixto", 20), units: [pools.con_carne.shift()] });
       }
       while (blocks.length < blocksCount) {
-        blocks.push({ kind: "sin_carne", discount: 15, units: [] });
+        blocks.push({ kind: "sin_carne", discount: getClientePromoEscalon_("PROMO_FAMILIAR", "sin_carne", 15), units: [] });
       }
       blocks.forEach(function(block){
         while (block.units.length < 4) {
@@ -2384,9 +2450,9 @@ function renderCocinaHeader_(nombreCocina) {
         return acc + (Number(item.precio || 0) * Number(item.cantidad || 0));
       }, 0);
       return {
-        aplica: descuentoTotal > 0,
+        aplica: isClientePromoActiva_("PROMO_FAMILIAR") && descuentoTotal > 0,
         kind: "PROMO_FAMILIAR",
-        nombrePromo: "Paquete Familiar 4 Medios",
+        nombrePromo: getClientePromoName_("PROMO_FAMILIAR", "Paquete Familiar 4 Medios"),
         bloquesTotal: blocks.length,
         descuentoTotal: round_(descuentoTotal, 2),
         breakdown: breakdown,
@@ -2448,8 +2514,12 @@ function renderCocinaHeader_(nombreCocina) {
       });
 
       const distintos = Object.keys(recetas).length;
-      const descuento = tieneProductoLaMa
-        ? (distintos >= 5 ? 20 : (distintos === 4 ? 15 : (distintos === 3 ? 10 : 0)))
+      const descuento = (isClientePromoActiva_("PROMO_VARIEDAD") && tieneProductoLaMa)
+        ? (distintos >= 5
+          ? getClientePromoEscalon_("PROMO_VARIEDAD", 5, 20)
+          : (distintos === 4
+            ? getClientePromoEscalon_("PROMO_VARIEDAD", 4, 15)
+            : (distintos === 3 ? getClientePromoEscalon_("PROMO_VARIEDAD", 3, 10) : 0)))
         : 0;
       let mensaje = "";
       if (!tieneProductoLaMa) {
@@ -2467,7 +2537,7 @@ function renderCocinaHeader_(nombreCocina) {
       return {
         aplica: descuento > 0,
         kind: "PROMO_VARIEDAD",
-        nombrePromo: "Combo Variedad La Má",
+        nombrePromo: getClientePromoName_("PROMO_VARIEDAD", "Combo Variedad La Má"),
         descuentoTotal: descuento,
         guisadosDistintos: distintos,
         tieneProductoLaMa: tieneProductoLaMa,
@@ -2484,6 +2554,7 @@ function renderCocinaHeader_(nombreCocina) {
     }
 
     function detectarCompletaTuComida_(){
+      const descuentoCompleta = getClientePromoFixed_("PROMO_COMPLETA", 10);
       let litros = 0;
       let tieneComplemento = false;
       carrito.forEach(function(item){
@@ -2495,15 +2566,15 @@ function renderCocinaHeader_(nombreCocina) {
         }
         if (producto === "salsa" || producto === "tortilla") tieneComplemento = true;
       });
-      const aplica = litros >= 0.999 && tieneComplemento;
+      const aplica = isClientePromoActiva_("PROMO_COMPLETA") && litros >= 0.999 && tieneComplemento;
       return {
         aplica: aplica,
         kind: "PROMO_COMPLETA",
-        nombrePromo: "Completa tu Comida",
-        descuentoTotal: aplica ? 10 : 0,
+        nombrePromo: getClientePromoName_("PROMO_COMPLETA", "Completa tu Comida"),
+        descuentoTotal: aplica ? descuentoCompleta : 0,
         mensaje: aplica
-          ? "Ya obtuviste $10 de descuento por completar tu comida."
-          : "Agrega salsa o tortilla a 1 litro de guisado para obtener $10 de descuento."
+          ? ("Ya obtuviste $" + descuentoCompleta + " de descuento por completar tu comida.")
+          : ("Agrega salsa o tortilla a 1 litro de guisado para obtener $" + descuentoCompleta + " de descuento.")
       };
     }
 
@@ -2516,11 +2587,15 @@ function renderCocinaHeader_(nombreCocina) {
         productos[producto === "gorditas" ? "gordita" : producto] = true;
       });
       const distintos = Object.keys(productos).length;
-      const descuento = distintos >= 3 ? 10 : (distintos >= 2 ? 5 : 0);
+      const descuento = isClientePromoActiva_("PROMO_MIX_LAMA")
+        ? (distintos >= 3
+          ? getClientePromoEscalon_("PROMO_MIX_LAMA", 3, 10)
+          : (distintos >= 2 ? getClientePromoEscalon_("PROMO_MIX_LAMA", 2, 5) : 0))
+        : 0;
       return {
         aplica: descuento > 0,
         kind: "PROMO_MIX_LAMA",
-        nombrePromo: "Mix La Má",
+        nombrePromo: getClientePromoName_("PROMO_MIX_LAMA", "Mix La Má"),
         descuentoTotal: descuento,
         mensaje: descuento > 0
           ? ("Ya obtuviste $" + descuento + " de descuento Mix La Má.")
@@ -2529,11 +2604,12 @@ function renderCocinaHeader_(nombreCocina) {
     }
 
     function getClienteFrecuenteDiscountForSubtotal_(subtotal){
+      if (!isClientePromoActiva_("PROMO_FRECUENTE")) return 0;
       const value = Math.max(0, Number(subtotal || 0));
-      if (value >= 450) return 20;
-      if (value >= 350) return 15;
-      if (value >= 250) return 10;
-      if (value >= 150) return 5;
+      if (value >= 450) return getClientePromoEscalon_("PROMO_FRECUENTE", 450, 20);
+      if (value >= 350) return getClientePromoEscalon_("PROMO_FRECUENTE", 350, 15);
+      if (value >= 250) return getClientePromoEscalon_("PROMO_FRECUENTE", 250, 10);
+      if (value >= 150) return getClientePromoEscalon_("PROMO_FRECUENTE", 150, 5);
       return 0;
     }
 
@@ -2548,7 +2624,7 @@ function renderCocinaHeader_(nombreCocina) {
       return {
         aplica: aplica,
         kind: "PROMO_FRECUENTE",
-        nombrePromo: "Recompensa Cliente Frecuente",
+        nombrePromo: getClientePromoName_("PROMO_FRECUENTE", "Recompensa Cliente Frecuente"),
         descuentoTotal: aplica ? descuentoFrecuente : 0,
         mensaje: disponibles > 0
           ? (descuentoFrecuente > 0 ? ("Ya aplicaste tu recompensa de $" + descuentoFrecuente + ".") : "Tienes una recompensa disponible en pedidos desde $150.")

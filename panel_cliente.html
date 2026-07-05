@@ -1173,6 +1173,8 @@
     let transferenciaPostPedido_ = false;
     let catalogRequestSeq_ = 0;
     let promoFrecuenteRequestSeq_ = 0;
+    let clienteSubmitInProgress_ = false;
+    let lastClienteAdd_ = { key: "", at: 0 };
     const promoFrecuenteCache_ = {};
     const transferenciaCache_ = {};
     const CLIENT_SESSION_STORAGE_KEY = "sistema_cocina_cliente_token";
@@ -1181,6 +1183,7 @@
     const CLIENT_CATALOG_MAX_AGE_MS = 5 * 60 * 1000;
     const CLIENT_PROMO_MAX_AGE_MS = 60 * 1000;
     const CLIENT_TRANSFER_MAX_AGE_MS = 10 * 60 * 1000;
+    const CLIENT_ADD_DEBOUNCE_MS = 1200;
 
     function getClienteToken_(){
       try { return localStorage.getItem(CLIENT_SESSION_STORAGE_KEY) || ""; }
@@ -2230,6 +2233,31 @@ function renderCocinaHeader_(nombreCocina) {
       updateDisponibilidadSalsa_();
     }
 
+    function buildClienteAddKey_(parts){
+      return (parts || []).map(function(part){
+        return norm_(part);
+      }).join("|");
+    }
+
+    function canAddClienteItemNow_(key){
+      const now = Date.now();
+      const cleanKey = String(key || "");
+      if (cleanKey && lastClienteAdd_.key === cleanKey && (now - Number(lastClienteAdd_.at || 0)) < CLIENT_ADD_DEBOUNCE_MS) {
+        mostrarMensaje_("Ya agregamos ese producto. Si necesitas más cantidad, ajusta el campo Cantidad antes de agregarlo.", "ok");
+        return false;
+      }
+      lastClienteAdd_ = { key: cleanKey, at: now };
+      return true;
+    }
+
+    function setClienteSubmitState_(submitting){
+      clienteSubmitInProgress_ = !!submitting;
+      const btn = document.getElementById("btnEnviar");
+      if (!btn) return;
+      btn.disabled = !!submitting || (ventanaPedido && ventanaPedido.abierta === false);
+      btn.textContent = submitting ? "Enviando pedido..." : "Enviar mi pedido";
+    }
+
     function agregarTortilla_(producto, label){
       const visible = label || producto;
       const slug = slug_(visible);
@@ -2239,6 +2267,7 @@ function renderCocinaHeader_(nombreCocina) {
       const cantidad = Number(qty ? qty.value : 0);
       const precio = pres && pres.selectedOptions.length ? Number(pres.selectedOptions[0].dataset.precio || 0) : 0;
       if (!presentacion || cantidad < 1) return mostrarMensaje_("Elige una presentación y una cantidad válida.", "error");
+      if (!canAddClienteItemNow_(buildClienteAddKey_(["lama", producto, presentacion, precio]))) return;
 
       carrito.push({
         id: uid_(),
@@ -2272,6 +2301,7 @@ function renderCocinaHeader_(nombreCocina) {
         cantidad
       );
       if (!ok) return;
+      if (!canAddClienteItemNow_(buildClienteAddKey_(["guisado", receta, tipo, presentacion, precio]))) return;
       
       const etiquetaBase = norm_(tipo) === "complemento" ? "Complemento" : "Guisado";
 
@@ -2306,6 +2336,7 @@ function renderCocinaHeader_(nombreCocina) {
         cantidad
       );
       if (!ok) return;
+      if (!canAddClienteItemNow_(buildClienteAddKey_(["salsa", receta, tipo, presentacion, precio]))) return;
 
       carrito.push({
         id: uid_(),
@@ -3163,9 +3194,11 @@ function renderCocinaHeader_(nombreCocina) {
     }
 
     function enviarPedido_(){
+      if (clienteSubmitInProgress_) {
+        return mostrarMensaje_("Estamos enviando tu pedido. Espera un momento para evitar duplicarlo.", "ok");
+      }
       const cliente = sincronizarClienteNombre_();
       const dia = document.getElementById("dia").value;
-      const btn = document.getElementById("btnEnviar");
       const combo = detectarComboSugerido_();
 
       if (ventanaPedido && ventanaPedido.abierta === false) {
@@ -3181,14 +3214,14 @@ function renderCocinaHeader_(nombreCocina) {
         return Object.assign({}, item, { comboSugerido: combo ? combo.comboName : "" });
       });
 
-      btn.disabled = true;
+      setClienteSubmitState_(true);
       google.script.run
         .withFailureHandler(function(err){
-          btn.disabled = false;
+          setClienteSubmitState_(false);
           mostrarMensaje_("No pudimos enviar tu pedido. Intenta de nuevo o avisanos por mensaje. Detalle: " + errorText_(err), "error");
         })
         .withSuccessHandler(function(res){
-          btn.disabled = false;
+          setClienteSubmitState_(false);
           transferenciaPostPedido_ = true;
           carrito = [];
           renderCarrito_();

@@ -794,6 +794,10 @@
         callApi({ action: "obtenerDisponibilidadCliente", dia }, this);
       },
 
+      obtenerEntregaClienteConfig() {
+        callApi({ action: "obtenerEntregaClienteConfig" }, this);
+      },
+
       obtenerPromocionFrecuenteCliente(cliente, token) {
         callApi({ action: "obtenerPromocionFrecuenteCliente", cliente, token }, this);
       },
@@ -957,6 +961,7 @@
             <label for="dia">Día para recibir tu pedido</label>
             <select id="dia" onchange="onDiaEntregaChange_()">
               <option value="Lunes">Lunes</option>
+              <option value="Martes">Martes</option>
               <option value="Viernes">Viernes</option>
             </select>
           </div>
@@ -1164,6 +1169,7 @@
     let carrito = [];
     let clientesMap = {};
     let ventanaPedido = { abierta: true };
+    let entregaClienteConfig_ = null;
     let ultimaActualizacionDisponibilidad_ = 0;
     let refrescandoDisponibilidad_ = false;
     let sesionCliente_ = null;
@@ -1952,7 +1958,7 @@ function updateDisponibilidadSalsa_(){
     // Catálogo y sesión son independientes: cargarlos en paralelo evita sumar
     // dos viajes consecutivos a Apps Script al abrir el panel.
     updateTransferenciaVisibility_();
-    cargarCatalogo_();
+    cargarEntregaClienteConfig_();
     restaurarSesionCliente_();
 
     setInterval(function(){
@@ -1970,6 +1976,37 @@ function updateDisponibilidadSalsa_(){
         mostrarMensaje_("Cambiamos el dí­a de entrega y vaciamos el carrito para mostrarte solo las opciones correctas.", "ok");
       }
       cargarCatalogo_();
+    }
+
+    function renderDiasEntregaCliente_(dias, defaultDia){
+      const select = document.getElementById("dia");
+      if (!select) return;
+      const opciones = Array.isArray(dias) && dias.length ? dias : ["Lunes", "Viernes"];
+      const actual = select.value;
+      select.innerHTML = opciones.map(function(dia){
+        return "<option value=\"" + escapeHtml_(dia) + "\">" + escapeHtml_(dia) + "</option>";
+      }).join("");
+      if (defaultDia && opciones.indexOf(defaultDia) >= 0) {
+        select.value = defaultDia;
+      } else if (actual && opciones.indexOf(actual) >= 0) {
+        select.value = actual;
+      } else {
+        select.value = opciones[0] || "";
+      }
+    }
+
+    function cargarEntregaClienteConfig_(){
+      google.script.run
+        .withSuccessHandler(function(resp){
+          entregaClienteConfig_ = resp || {};
+          renderDiasEntregaCliente_(entregaClienteConfig_.dias, entregaClienteConfig_.defaultDia);
+          cargarCatalogo_();
+        })
+        .withFailureHandler(function(){
+          renderDiasEntregaCliente_(["Lunes", "Viernes"], "");
+          cargarCatalogo_();
+        })
+        .obtenerEntregaClienteConfig();
     }
 
     function refrescarDisponibilidadInicial_(){

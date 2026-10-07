@@ -805,16 +805,17 @@
       const map = {};
       (data || []).forEach(function(cliente, clientIdx){
         (cliente.items || []).forEach(function(item, itemIdx){
+          const detalleVisible = cleanProductoDetalle_(item.detalle || "");
           const key = [
             norm_(item.producto || "Sin producto"),
-            norm_(item.detalle || "Sin detalle"),
+            norm_(detalleVisible || "Sin detalle"),
             norm_(item.presentacion || "Sin presentacion")
           ].join("|");
           if (!map[key]) {
             map[key] = {
               key: key,
               producto: item.producto || "Sin producto",
-              detalle: item.detalle || "Sin detalle",
+              detalle: detalleVisible || "Sin detalle",
               presentacion: item.presentacion || "",
               items: [],
               totalUnidades: 0,
@@ -866,6 +867,15 @@
         });
         return group;
       });
+    }
+
+    function cleanProductoDetalle_(detalle) {
+      let value = String(detalle || "").trim();
+      if (!value) return "";
+      value = value.replace(/\s*\|\s*Obs:.*$/i, "");
+      value = value.replace(/\s*Obs:.*$/i, "");
+      value = value.replace(/\s*\|\s*Folio carrito.*$/i, "");
+      return value.trim();
     }
 
     function buildPresentacionTotals_(groups) {

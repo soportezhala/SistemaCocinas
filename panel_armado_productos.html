@@ -385,6 +385,74 @@
       font-weight: 700;
     }
 
+    .packing-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .packing-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--soft-danger);
+      padding: 14px;
+      box-shadow: 0 10px 24px rgba(31, 45, 49, .06);
+    }
+
+    .packing-row.partial { background: var(--soft-warn); }
+    .packing-row.done { background: var(--soft-ok); }
+
+    .packing-name {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .packing-name strong {
+      line-height: 1.25;
+    }
+
+    .packing-count {
+      min-width: 62px;
+      text-align: center;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid #d8e1e5;
+      padding: 8px 12px;
+      font-weight: 900;
+    }
+
+    .packing-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #fff;
+      border: 1px solid #d8e1e5;
+      color: var(--ink);
+      font-weight: 800;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .packing-check.done {
+      background: #daf0e1;
+      border-color: #a6d5b4;
+      color: #1f6f3d;
+    }
+
+    .packing-check input {
+      width: 18px;
+      height: 18px;
+      min-height: 18px;
+      accent-color: var(--ok);
+    }
+
     .item-card {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(190px, auto);
@@ -496,12 +564,17 @@
 
       .filters,
       .stats-grid,
-      .item-card {
+      .item-card,
+      .packing-row {
         grid-template-columns: 1fr;
       }
 
       .check-grid {
         justify-content: flex-start;
+      }
+
+      .packing-count {
+        width: fit-content;
       }
 
       .client-head {
@@ -725,9 +798,7 @@
         return;
       }
 
-      list.innerHTML = renderResumenPresentaciones_(grupos)
-        + "<section class='summary-panel'><h3>Empaque por guisado / salsa</h3></section>"
-        + filtered.map(renderProductoCard_).join("");
+      list.innerHTML = renderResumenPresentaciones_(grupos) + renderEmpaqueProductos_(filtered);
     }
 
     function buildProductoGroups_(data) {
@@ -844,67 +915,40 @@
         + "</section>";
     }
 
-    function renderProductoCard_(group) {
+    function renderEmpaqueProductos_(groups) {
+      const rows = (groups || []).map(renderProductoRow_).join("");
+      return ""
+        + "<section class='summary-panel'>"
+        + "<h3>Empaque por guisado / salsa</h3>"
+        + "<div class='packing-list'>" + rows + "</div>"
+        + "</section>";
+    }
+
+    function renderProductoRow_(group) {
       const total = Number(group.totalUnidades || 0);
       const packed = Number(group.totalEmpacadas || 0);
-      const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((packed / total) * 100))) : 0;
       const complete = total > 0 && packed >= total;
-      const chipClass = complete ? "ok" : (packed > 0 ? "warn" : "danger");
+      const partial = !complete && packed > 0;
+      const rowClass = complete ? "done" : (partial ? "partial" : "");
       const nombre = [
         group.producto || "Sin producto",
         group.detalle && group.detalle !== "Sin detalle" ? group.detalle : "",
         group.presentacion || ""
       ].filter(Boolean).join(" - ");
+      const estado = complete ? "Empacado" : (partial ? ("Parcial " + packed + "/" + total) : "Pendiente");
 
       return ""
-        + "<article class='client-card'>"
-        + "<div class='client-head'>"
-        + "<div class='client-title'><strong>" + escapeHtml_(nombre) + "</strong>"
-        + "<span class='chip " + chipClass + "'>" + packed + " / " + total + " presentaciones</span>"
+        + "<div class='packing-row " + rowClass + "'>"
+        + "<div class='packing-name'>"
+        + "<strong>" + escapeHtml_(nombre) + "</strong>"
+        + "<span class='item-meta'>" + escapeHtml_(estado) + "</span>"
         + "</div>"
-        + "<div class='actions'>"
-        + "<button class='btn small' type='button' onclick='setArmadoProductoChecks_(" + Number(group.groupIndex || 0) + ", true)'>Marcar empacado</button>"
-        + "<button class='btn ghost small' type='button' onclick='setArmadoProductoChecks_(" + Number(group.groupIndex || 0) + ", false)'>Limpiar</button>"
-        + "</div>"
-        + "</div>"
-        + "<div class='progress-wrap'><div class='progress'><div class='" + (complete ? "done" : "") + "' style='width:" + pct + "%'></div></div></div>"
-        + "<div class='items'><div class='check-grid'>" + renderProductoChecks_(group) + "</div></div>"
-        + "</article>";
-    }
-
-    function renderProductoChecks_(group) {
-      const refs = Array.isArray(group && group.unitRefs) ? group.unitRefs : [];
-      if (!refs.length) return "<span class='muted'>Sin presentaciones</span>";
-      return refs.map(function(ref, idx){
-        const done = !!ref.empacado;
-        return ""
-          + "<label class='piece-check " + (done ? "done" : "") + "'>"
-          + "<input type='checkbox' " + (done ? "checked" : "") + " onchange='toggleArmadoProductoUnit_(" + Number(group.groupIndex || 0) + "," + idx + ", this.checked)'>"
-          + "Pza " + (idx + 1)
-          + "</label>";
-      }).join("");
-    }
-
-    function toggleArmadoProductoUnit_(groupIdx, unitPosition, checked) {
-      const group = buildProductoGroups_(armadoData)[groupIdx];
-      const ref = group && Array.isArray(group.unitRefs) ? group.unitRefs[unitPosition] : null;
-      if (!ref) {
-        setMensaje_("No se encontró la presentación para actualizar.", "error");
-        return;
-      }
-      const payload = getPedidoPayload_(ref.clientIdx, ref.itemIdx);
-      if (!payload) return;
-      applyArmadoCheckLocal_(ref.clientIdx, ref.itemIdx, ref.unitIndex, checked);
-      actualizarArmado_({
-        action: "saveArmadoCheck",
-        semana: getFiltros_().semana,
-        filtros: getFiltros_(),
-        cliente: payload.cliente,
-        pedidoId: payload.item.idPedido,
-        unitIndex: ref.unitIndex,
-        empacado: checked,
-        skipRefresh: true
-      });
+        + "<div class='packing-count'>" + total + "</div>"
+        + "<label class='packing-check " + (complete ? "done" : "") + "'>"
+        + "<input type='checkbox' " + (complete ? "checked" : "") + " onchange='setArmadoProductoChecks_(" + Number(group.groupIndex || 0) + ", this.checked)'>"
+        + "Listo"
+        + "</label>"
+        + "</div>";
     }
 
     function setArmadoProductoChecks_(groupIdx, checked) {

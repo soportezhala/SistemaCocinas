@@ -348,6 +348,43 @@
       padding: 14px;
     }
 
+    .summary-panel {
+      display: grid;
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 14px 34px rgba(31, 45, 49, .08);
+      padding: 18px;
+    }
+
+    .summary-panel h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .summary-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+    }
+
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fffdfa;
+      padding: 12px 14px;
+      font-weight: 800;
+    }
+
+    .summary-item span {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
     .item-card {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(190px, auto);
@@ -688,7 +725,9 @@
         return;
       }
 
-      list.innerHTML = filtered.map(renderProductoCard_).join("");
+      list.innerHTML = renderResumenPresentaciones_(grupos)
+        + "<section class='summary-panel'><h3>Empaque por guisado / salsa</h3></section>"
+        + filtered.map(renderProductoCard_).join("");
     }
 
     function buildProductoGroups_(data) {
@@ -708,7 +747,8 @@
               presentacion: item.presentacion || "",
               items: [],
               totalUnidades: 0,
-              totalEmpacadas: 0
+              totalEmpacadas: 0,
+              unitRefs: []
             };
           }
           map[key].items.push({
@@ -719,6 +759,16 @@
           });
           map[key].totalUnidades += Number(item.unitCount || 0);
           map[key].totalEmpacadas += Number(item.packedCount || 0);
+          (Array.isArray(item.unitChecks) ? item.unitChecks : []).forEach(function(check){
+            map[key].unitRefs.push({
+              cliente: cliente.cliente,
+              clientIdx: clientIdx,
+              itemIdx: itemIdx,
+              pedidoId: item.idPedido,
+              unitIndex: Number(check.index || 0),
+              empacado: !!check.empacado
+            });
+          });
         });
       });
 
@@ -735,8 +785,63 @@
           || String(a.presentacion || "").localeCompare(String(b.presentacion || ""), "es");
       }).map(function(group, idx){
         group.groupIndex = idx;
+        group.unitRefs = (group.unitRefs || []).sort(function(a, b){
+          return String(a.cliente || "").localeCompare(String(b.cliente || ""), "es")
+            || String(a.pedidoId || "").localeCompare(String(b.pedidoId || ""), "es")
+            || Number(a.unitIndex || 0) - Number(b.unitIndex || 0);
+        }).map(function(unit, unitIdx){
+          unit.unitPosition = unitIdx;
+          return unit;
+        });
         return group;
       });
+    }
+
+    function buildPresentacionTotals_(groups) {
+      const map = {};
+      (groups || []).forEach(function(group){
+        const key = [
+          group.producto || "Sin producto",
+          group.presentacion || "Sin presentacion"
+        ].join("|");
+        if (!map[key]) {
+          map[key] = {
+            producto: group.producto || "Sin producto",
+            presentacion: group.presentacion || "Sin presentacion",
+            total: 0,
+            empacadas: 0
+          };
+        }
+        map[key].total += Number(group.totalUnidades || 0);
+        map[key].empacadas += Number(group.totalEmpacadas || 0);
+      });
+
+      return Object.keys(map).map(function(key){ return map[key]; }).sort(function(a, b){
+        return String(a.producto || "").localeCompare(String(b.producto || ""), "es")
+          || String(a.presentacion || "").localeCompare(String(b.presentacion || ""), "es");
+      });
+    }
+
+    function renderResumenPresentaciones_(groups) {
+      const totals = buildPresentacionTotals_(groups);
+      if (!totals.length) return "";
+      const cocina = getFiltros_().cocina || "Todas las cocinas";
+      const rows = totals.map(function(row){
+        return ""
+          + "<div class='summary-item'>"
+          + "<span>" + escapeHtml_([row.producto, row.presentacion].filter(Boolean).join(" ")) + "</span>"
+          + "<strong>" + Number(row.total || 0) + "</strong>"
+          + "</div>";
+      }).join("");
+      return ""
+        + "<section class='summary-panel'>"
+        + "<div>"
+        + "<h3>Plan de producción - " + escapeHtml_(cocina) + "</h3>"
+        + "<p class='muted' style='margin:6px 0 0;'>" + escapeHtml_(buildPeriodoTexto_()) + "</p>"
+        + "</div>"
+        + "<h3>Totales por presentación</h3>"
+        + "<div class='summary-list'>" + rows + "</div>"
+        + "</section>";
     }
 
     function renderProductoCard_(group) {
@@ -745,119 +850,58 @@
       const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((packed / total) * 100))) : 0;
       const complete = total > 0 && packed >= total;
       const chipClass = complete ? "ok" : (packed > 0 ? "warn" : "danger");
-      const detalles = [
+      const nombre = [
+        group.producto || "Sin producto",
         group.detalle && group.detalle !== "Sin detalle" ? group.detalle : "",
-        group.presentacion ? ("Presentacion: " + group.presentacion) : ""
-      ].filter(Boolean).join(" · ");
-      const items = (group.items || []).map(function(row){
-        return renderPedidoCard_(row.clientIdx, row.itemIdx, row.item, row.cliente);
-      }).join("");
+        group.presentacion || ""
+      ].filter(Boolean).join(" - ");
 
       return ""
         + "<article class='client-card'>"
         + "<div class='client-head'>"
-        + "<div class='client-title'><strong>" + escapeHtml_(group.producto || "Sin producto") + "</strong>"
+        + "<div class='client-title'><strong>" + escapeHtml_(nombre) + "</strong>"
         + "<span class='chip " + chipClass + "'>" + packed + " / " + total + " presentaciones</span>"
-        + (detalles ? "<span class='chip'>" + escapeHtml_(detalles) + "</span>" : "")
         + "</div>"
         + "<div class='actions'>"
-        + "<button class='btn small' type='button' onclick='setArmadoProductoChecks_(" + Number(group.groupIndex || 0) + ", true)'>Marcar producto</button>"
-        + "<button class='btn ghost small' type='button' onclick='setArmadoProductoChecks_(" + Number(group.groupIndex || 0) + ", false)'>Limpiar producto</button>"
+        + "<button class='btn small' type='button' onclick='setArmadoProductoChecks_(" + Number(group.groupIndex || 0) + ", true)'>Marcar empacado</button>"
+        + "<button class='btn ghost small' type='button' onclick='setArmadoProductoChecks_(" + Number(group.groupIndex || 0) + ", false)'>Limpiar</button>"
         + "</div>"
         + "</div>"
         + "<div class='progress-wrap'><div class='progress'><div class='" + (complete ? "done" : "") + "' style='width:" + pct + "%'></div></div></div>"
-        + "<div class='items'>" + items + "</div>"
+        + "<div class='items'><div class='check-grid'>" + renderProductoChecks_(group) + "</div></div>"
         + "</article>";
     }
 
-    function renderPedidoCard_(clientIdx, itemIdx, item, clienteNombre) {
-      const total = Number(item && item.unitCount || 0);
-      const packed = Number(item && item.packedCount || 0);
-      const state = total > 0 && packed >= total ? "done" : (packed > 0 ? "partial" : "");
-      const detail = [
-        clienteNombre ? ("Cliente: " + clienteNombre) : "",
-        item.presentacion ? ("Presentacion: " + item.presentacion) : "",
-        item.cantidad ? ("Cantidad: " + item.cantidad) : "",
-        total ? ("Empacado: " + packed + "/" + total) : ""
-      ].filter(Boolean).join(" · ");
-      return ""
-        + "<div class='item-card " + state + "'>"
-        + "<div class='item-main'>"
-        + "<strong>" + escapeHtml_(clienteNombre || "Sin cliente") + "</strong>"
-        + "<div>" + escapeHtml_(item.detalle || "Sin detalle") + "</div>"
-        + "<div class='item-meta'>" + escapeHtml_(detail) + "</div>"
-        + "</div>"
-        + "<div>"
-        + "<div class='check-grid'>" + renderChecks_(clientIdx, itemIdx, item) + "</div>"
-        + "<div class='actions' style='margin-top:10px;'>"
-        + "<button class='btn ghost small' type='button' onclick='setArmadoItemChecks_(" + clientIdx + "," + itemIdx + ", true)'>Renglón listo</button>"
-        + "<button class='btn secondary small' type='button' onclick='setArmadoItemChecks_(" + clientIdx + "," + itemIdx + ", false)'>Reabrir</button>"
-        + "</div>"
-        + "</div>"
-        + "</div>";
-    }
-
-    function renderChecks_(clientIdx, itemIdx, item) {
-      const checks = Array.isArray(item && item.unitChecks) ? item.unitChecks : [];
-      if (!checks.length) return "<span class='muted'>Sin piezas</span>";
-      return checks.map(function(check){
-        const done = !!check.empacado;
+    function renderProductoChecks_(group) {
+      const refs = Array.isArray(group && group.unitRefs) ? group.unitRefs : [];
+      if (!refs.length) return "<span class='muted'>Sin presentaciones</span>";
+      return refs.map(function(ref, idx){
+        const done = !!ref.empacado;
         return ""
           + "<label class='piece-check " + (done ? "done" : "") + "'>"
-          + "<input type='checkbox' " + (done ? "checked" : "") + " onchange='toggleArmadoCheck_(" + clientIdx + "," + itemIdx + "," + Number(check.index || 0) + ", this.checked)'>"
-          + "Pza " + Number(check.index || 0)
+          + "<input type='checkbox' " + (done ? "checked" : "") + " onchange='toggleArmadoProductoUnit_(" + Number(group.groupIndex || 0) + "," + idx + ", this.checked)'>"
+          + "Pza " + (idx + 1)
           + "</label>";
       }).join("");
     }
 
-    function toggleArmadoCheck_(clientIdx, itemIdx, unitIndex, checked) {
-      const payload = getPedidoPayload_(clientIdx, itemIdx);
+    function toggleArmadoProductoUnit_(groupIdx, unitPosition, checked) {
+      const group = buildProductoGroups_(armadoData)[groupIdx];
+      const ref = group && Array.isArray(group.unitRefs) ? group.unitRefs[unitPosition] : null;
+      if (!ref) {
+        setMensaje_("No se encontró la presentación para actualizar.", "error");
+        return;
+      }
+      const payload = getPedidoPayload_(ref.clientIdx, ref.itemIdx);
       if (!payload) return;
-      applyArmadoCheckLocal_(clientIdx, itemIdx, unitIndex, checked);
+      applyArmadoCheckLocal_(ref.clientIdx, ref.itemIdx, ref.unitIndex, checked);
       actualizarArmado_({
         action: "saveArmadoCheck",
         semana: getFiltros_().semana,
         filtros: getFiltros_(),
         cliente: payload.cliente,
         pedidoId: payload.item.idPedido,
-        unitIndex: unitIndex,
-        empacado: checked,
-        skipRefresh: true
-      });
-    }
-
-    function setArmadoItemChecks_(clientIdx, itemIdx, checked) {
-      const payload = getPedidoPayload_(clientIdx, itemIdx);
-      if (!payload) return;
-      applyArmadoItemLocal_(clientIdx, itemIdx, checked);
-      actualizarArmado_({
-        action: "saveArmadoItemChecks",
-        semana: getFiltros_().semana,
-        filtros: getFiltros_(),
-        cliente: payload.cliente,
-        pedidoId: payload.item.idPedido,
-        totalUnits: payload.item.unitCount,
-        empacado: checked,
-        skipRefresh: true
-      });
-    }
-
-    function setArmadoClienteChecks_(clientIdx, checked) {
-      const cliente = armadoData[clientIdx];
-      if (!cliente || !Array.isArray(cliente.items) || !cliente.items.length) {
-        setMensaje_("No se encontró información del cliente.", "error");
-        return;
-      }
-      const pedidos = cliente.items.map(function(item){
-        return { idPedido: item.idPedido, totalUnits: item.unitCount };
-      }).filter(function(item){ return item.idPedido && item.totalUnits; });
-      applyArmadoClienteLocal_(clientIdx, checked);
-      actualizarArmado_({
-        action: "saveArmadoClienteChecks",
-        semana: getFiltros_().semana,
-        filtros: getFiltros_(),
-        cliente: cliente.cliente,
-        pedidos: pedidos,
+        unitIndex: ref.unitIndex,
         empacado: checked,
         skipRefresh: true
       });
@@ -937,19 +981,6 @@
       if (!skipRender) renderArmado_();
     }
 
-    function applyArmadoClienteLocal_(clientIdx, checked) {
-      const cliente = armadoData[clientIdx];
-      if (!cliente || !Array.isArray(cliente.items)) return;
-      cliente.items.forEach(function(item){
-        if (Array.isArray(item.unitChecks)) {
-          item.unitChecks.forEach(function(check){ check.empacado = !!checked; });
-        }
-        recalcArmadoItem_(item);
-      });
-      recalcArmadoCliente_(cliente);
-      renderArmado_();
-    }
-
     function actualizarArmado_(payload) {
       savingCount++;
       setMensaje_(savingCount > 1 ? ("Guardando " + savingCount + " cambios...") : "Guardando avance...", "warn");
@@ -999,16 +1030,6 @@
         return null;
       }
       return { cliente: cliente.cliente, item: item };
-    }
-
-    function getSourceItemIndex_(clientIdx, item) {
-      const cliente = armadoData[clientIdx];
-      const items = cliente && Array.isArray(cliente.items) ? cliente.items : [];
-      return items.findIndex(function(src){
-        return src && src.idPedido === item.idPedido
-          && String(src.presentacion || "") === String(item.presentacion || "")
-          && String(src.detalle || "") === String(item.detalle || "");
-      });
     }
 
     function filtrarProductos_(groups) {

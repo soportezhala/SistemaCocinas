@@ -650,7 +650,7 @@
           <div class="stat"><span>Preparaciones</span><strong id="statClientes">0</strong></div>
           <div class="stat"><span>Pendientes</span><strong id="statPendientes">0</strong></div>
           <div class="stat"><span>Cocinados</span><strong id="statCompletos">0</strong></div>
-          <div class="stat"><span>Litros</span><strong id="statPiezas">0 L</strong></div>
+          <div class="stat"><span>Cantidad</span><strong id="statPiezas">0 L</strong></div>
         </div>
       </section>
 
@@ -791,7 +791,7 @@
       document.getElementById("statClientes").textContent = totals.productos;
       document.getElementById("statPendientes").textContent = totals.pendientes;
       document.getElementById("statCompletos").textContent = totals.completos;
-      document.getElementById("statPiezas").textContent = formatLitros_(totals.litros);
+      document.getElementById("statPiezas").textContent = buildCantidadTotalTexto_(grupos);
       document.getElementById("periodoTexto").textContent = buildPeriodoTexto_();
       updateFilterButtons_();
 
@@ -809,35 +809,45 @@
       (data || []).forEach(function(cliente, clientIdx){
         (cliente.items || []).forEach(function(item, itemIdx){
           const detalleVisible = cleanProductoDetalle_(item.detalle || "");
+          const productoVisible = normalizeProductoCocina_(item.producto || "Sin producto");
+          const isLaMa = isProductoTortillasLaMa_(productoVisible);
+          const detalleAgrupado = isLaMa ? "Sin detalle" : (detalleVisible || "Sin detalle");
           const key = [
-            norm_(item.producto || "Sin producto"),
-            norm_(detalleVisible || "Sin detalle")
+            norm_(productoVisible || "Sin producto"),
+            norm_(detalleAgrupado)
           ].join("|");
           const presentacion = item.presentacion || "Sin presentacion";
           const unidades = Number(item.unitCount || 0);
           const litrosUnitarios = getLitrosPorPresentacion_(presentacion);
           const litros = roundLitros_(unidades * litrosUnitarios);
+          const cantidadOperativa = getCantidadOperativa_(productoVisible, presentacion, unidades, litros);
           if (!map[key]) {
             map[key] = {
               key: key,
-              producto: item.producto || "Sin producto",
-              detalle: detalleVisible || "Sin detalle",
+              producto: productoVisible || "Sin producto",
+              detalle: detalleAgrupado,
               presentaciones: {},
               items: [],
               totalUnidades: 0,
               totalLitros: 0,
+              totalOperativo: {},
               unitRefs: []
             };
           }
+          map[key].isTortillasLaMa = isLaMa;
           if (!map[key].presentaciones[presentacion]) {
             map[key].presentaciones[presentacion] = {
               presentacion: presentacion,
+              producto: productoVisible || "Sin producto",
               unidades: 0,
-              litros: 0
+              litros: 0,
+              operativo: {}
             };
           }
           map[key].presentaciones[presentacion].unidades += unidades;
           map[key].presentaciones[presentacion].litros = roundLitros_(map[key].presentaciones[presentacion].litros + litros);
+          addCantidadOperativa_(map[key].presentaciones[presentacion].operativo, cantidadOperativa);
+          addCantidadOperativa_(map[key].totalOperativo, cantidadOperativa);
           map[key].items.push({
             cliente: cliente.cliente,
             clientIdx: clientIdx,
@@ -898,6 +908,69 @@
       return value.trim();
     }
 
+    function normalizeProductoCocina_(producto) {
+      const raw = String(producto || "").trim();
+      const key = norm_(raw);
+      if (key === "tortillas") return "Tortilla";
+      if (key === "gordita") return "Gorditas";
+      return raw;
+    }
+
+    function isProductoTortillasLaMa_(producto) {
+      const key = norm_(producto);
+      return ["tortilla", "tortillas", "sope", "sopes", "huarache", "huaraches", "gordita", "gorditas"].indexOf(key) >= 0;
+    }
+
+    function getCantidadOperativa_(producto, presentacion, unidades, litros) {
+      const prod = normalizeProductoCocina_(producto);
+      const pres = norm_(presentacion);
+      const qty = Number(unidades || 0);
+      if (isProductoTortillasLaMa_(prod)) {
+        if (norm_(prod) === "tortilla") {
+          if (pres === norm_("1 kilo")) return { kilos: qty };
+          if (pres === norm_("1/2 kilo")) return { medios: qty };
+        } else {
+          if (pres === norm_("1 docena")) return { docenas: qty };
+          if (pres === norm_("1/2 docena")) return { medias: qty };
+        }
+        return { piezas: qty };
+      }
+      return { litros: Number(litros || 0) };
+    }
+
+    function addCantidadOperativa_(target, source) {
+      Object.keys(source || {}).forEach(function(key){
+        target[key] = Number(target[key] || 0) + Number(source[key] || 0);
+      });
+    }
+
+    function formatCantidadNumero_(value) {
+      const num = Number(value || 0);
+      if (!isFinite(num)) return "0";
+      if (Math.abs(num - Math.round(num)) < 0.000001) return String(Math.round(num));
+      return String(Math.round((num + Number.EPSILON) * 100) / 100);
+    }
+
+    function formatCantidadOperativa_(cantidad) {
+      const data = cantidad || {};
+      const parts = [];
+      if (Number(data.litros || 0)) parts.push(formatLitros_(data.litros));
+      if (Number(data.kilos || 0)) parts.push(formatCantidadNumero_(data.kilos) + " kilos");
+      if (Number(data.medios || 0)) parts.push(formatCantidadNumero_(data.medios) + " medios");
+      if (Number(data.docenas || 0)) parts.push(formatCantidadNumero_(data.docenas) + " docenas");
+      if (Number(data.medias || 0)) parts.push(formatCantidadNumero_(data.medias) + " medias");
+      if (Number(data.piezas || 0)) parts.push(formatCantidadNumero_(data.piezas) + " pzas");
+      return parts.length ? parts.join(" · ") : "0";
+    }
+
+    function buildCantidadTotalTexto_(groups) {
+      const total = {};
+      (groups || []).forEach(function(group){
+        addCantidadOperativa_(total, group.totalOperativo || {});
+      });
+      return formatCantidadOperativa_(total);
+    }
+
     function buildPresentacionTotals_(groups) {
       const map = {};
       (groups || []).forEach(function(group){
@@ -911,11 +984,13 @@
               producto: group.producto || "Sin producto",
               presentacion: row.presentacion || "Sin presentacion",
               unidades: 0,
-              litros: 0
+              litros: 0,
+              operativo: {}
             };
           }
           map[key].unidades += Number(row.unidades || 0);
           map[key].litros = roundLitros_(map[key].litros + Number(row.litros || 0));
+          addCantidadOperativa_(map[key].operativo, row.operativo || {});
         });
       });
 
@@ -933,7 +1008,7 @@
         return ""
           + "<div class='summary-item'>"
           + "<span>" + escapeHtml_([row.producto, row.presentacion].filter(Boolean).join(" ")) + "</span>"
-          + "<strong>" + formatLitros_(row.litros) + "</strong>"
+          + "<strong>" + escapeHtml_(formatCantidadOperativa_(row.operativo || { litros: row.litros })) + "</strong>"
           + "</div>";
       }).join("");
       return ""
@@ -958,7 +1033,6 @@
 
     function renderProductoRow_(group) {
       const total = Number(group.totalUnidades || 0);
-      const litros = Number(group.totalLitros || 0);
       const complete = !!group.cooked;
       const rowClass = complete ? "done" : "";
       const nombre = [
@@ -974,7 +1048,7 @@
         + "<strong>" + escapeHtml_(nombre) + "</strong>"
         + "<span class='item-meta'>" + escapeHtml_(detalle + " | " + estado) + "</span>"
         + "</div>"
-        + "<div class='packing-count'>" + formatLitros_(litros) + "</div>"
+        + "<div class='packing-count'>" + escapeHtml_(formatCantidadOperativa_(group.totalOperativo || { litros: group.totalLitros })) + "</div>"
         + "<label class='packing-check " + (complete ? "done" : "") + "'>"
         + "<input type='checkbox' " + (complete ? "checked" : "") + " onchange='setCocinaProductoCheck_(" + Number(group.groupIndex || 0) + ", this.checked)'>"
         + "Cocinado"
@@ -995,9 +1069,9 @@
 
     function buildPresentacionesTexto_(group) {
       const rows = group && Array.isArray(group.presentaciones) ? group.presentaciones : [];
-      if (!rows.length) return Number(group.totalUnidades || 0) + " piezas";
+      if (!rows.length) return formatCantidadOperativa_(group && group.totalOperativo ? group.totalOperativo : { piezas: Number(group && group.totalUnidades || 0) });
       return rows.map(function(row){
-        return row.presentacion + ": " + Number(row.unidades || 0) + " pzas";
+        return row.presentacion + ": " + formatCantidadOperativa_(row.operativo || { piezas: Number(row.unidades || 0) });
       }).join(" · ");
     }
 

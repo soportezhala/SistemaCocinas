@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Cocina del día</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Playfair+Display:wght@700&display=swap');
+
+    :root {
+      --ink: #152b32;
+      --muted: #667780;
+      --paper: #f7f1e8;
+      --card: #fffdfa;
+      --line: #e6d5c3;
+      --teal: #087486;
+      --teal-strong: #075d6c;
+      --coral: #d96f52;
+      --gold: #e7b84a;
+      --ok: #2f8057;
+      --warn: #a56c16;
+      --danger: #b94e3a;
+      --soft-ok: #eaf7ef;
+      --soft-warn: #fff6df;
+      --soft-danger: #fff0eb;
+      --shadow: 0 18px 44px rgba(31, 45, 49, .10);
+      --font-ui: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-display: 'Playfair Display', Georgia, serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(231, 184, 74, .18), transparent 32%),
+        linear-gradient(135deg, #faf7f1 0%, #eef4f2 52%, #f6efe6 100%);
+      font-family: var(--font-ui);
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .page {
+      width: min(1280px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255, 253, 250, .9);
+      box-shadow: var(--shadow);
+    }
+
+    .brand-logos {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .brand-logo {
+      width: clamp(64px, 8vw, 96px);
+      height: clamp(64px, 8vw, 96px);
+      object-fit: contain;
+      border-radius: 20px;
+      border: 1px solid rgba(230, 213, 195, .9);
+      background: rgba(255, 253, 250, .86);
+      padding: 8px;
+      box-shadow: 0 10px 24px rgba(31, 45, 49, .10);
+    }
+
+    .badge {
+      display: inline-flex;
+      width: fit-content;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f8efe3;
+      color: #7a593c;
+      padding: 7px 12px;
+      font-size: .9rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 6vw, 4.2rem);
+      line-height: .95;
+      letter-spacing: -.02em;
+    }
+
+    h2, h3, p {
+      margin-top: 0;
+    }
+
+    h2 {
+      margin-bottom: 6px;
+      font-size: 1.35rem;
+    }
+
+    .muted {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .hero-actions,
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: var(--teal);
+      color: white;
+      font-weight: 800;
+      box-shadow: 0 10px 22px rgba(8, 116, 134, .16);
+    }
+
+    .btn:hover { background: var(--teal-strong); }
+
+    .btn.secondary {
+      background: #fffdfa;
+      color: var(--ink);
+      border: 1px solid #cfdae0;
+      box-shadow: none;
+    }
+
+    .btn.warning {
+      background: var(--coral);
+      color: white;
+    }
+
+    .btn.ghost {
+      background: #f6f9fa;
+      color: var(--ink);
+      border: 1px solid #d7e2e6;
+      box-shadow: none;
+    }
+
+    .btn.small {
+      min-height: 36px;
+      padding: 8px 12px;
+      font-size: .88rem;
+    }
+
+    .layout {
+      display: grid;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255, 253, 250, .94);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr)) auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: #51646f;
+      font-size: .88rem;
+      font-weight: 700;
+    }
+
+    select, input {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid #ccdce4;
+      border-radius: 14px;
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 4px rgba(8, 116, 134, .12);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fffdfa;
+      padding: 14px;
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: .82rem;
+      font-weight: 700;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 4px;
+      font-size: clamp(1.45rem, 4vw, 2.25rem);
+      line-height: 1;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .segmented {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .notice {
+      display: none;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #fffdfa;
+      color: var(--ink);
+    }
+
+    .notice.show { display: block; }
+    .notice.ok { background: var(--soft-ok); border-color: #b9dfc4; color: #236742; }
+    .notice.warn { background: var(--soft-warn); border-color: #f0cf82; color: #7d5512; }
+    .notice.error { background: var(--soft-danger); border-color: #edb4a8; color: #943a2b; }
+
+    .client-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .client-card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 14px 34px rgba(31, 45, 49, .08);
+    }
+
+    .client-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 16px 18px;
+      background: linear-gradient(135deg, #fffaf1, #f7fbfa);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .client-title {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .client-title strong {
+      font-size: 1.08rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: .82rem;
+      font-weight: 800;
+      background: #f4ede4;
+      color: #705740;
+    }
+
+    .chip.ok { background: var(--soft-ok); color: #236742; }
+    .chip.warn { background: var(--soft-warn); color: #7d5512; }
+    .chip.danger { background: var(--soft-danger); color: #943a2b; }
+
+    .progress-wrap {
+      padding: 0 18px 16px;
+      background: linear-gradient(135deg, #fffaf1, #f7fbfa);
+    }
+
+    .progress {
+      height: 11px;
+      border-radius: 999px;
+      background: #eadfd3;
+      overflow: hidden;
+    }
+
+    .progress > div {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--warn);
+      transition: width .18s ease;
+    }
+
+    .progress > div.done { background: var(--ok); }
+
+    .items {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .summary-panel {
+      display: grid;
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 14px 34px rgba(31, 45, 49, .08);
+      padding: 18px;
+    }
+
+    .summary-panel h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .summary-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+    }
+
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fffdfa;
+      padding: 12px 14px;
+      font-weight: 800;
+    }
+
+    .summary-item span {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .packing-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .packing-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(130px, auto) auto;
+      gap: 16px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--soft-danger);
+      padding: 18px;
+      box-shadow: 0 10px 24px rgba(31, 45, 49, .06);
+    }
+
+    .packing-row.partial { background: var(--soft-warn); }
+    .packing-row.done { background: var(--soft-ok); }
+
+    .packing-name {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .packing-name strong {
+      font-size: clamp(1.08rem, 2vw, 1.45rem);
+      line-height: 1.25;
+    }
+
+    .packing-count {
+      min-width: 120px;
+      text-align: center;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid #d8e1e5;
+      padding: 10px 14px;
+      font-weight: 900;
+      font-size: clamp(1.05rem, 2vw, 1.35rem);
+    }
+
+    .packing-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 48px;
+      border-radius: 999px;
+      padding: 10px 16px;
+      background: #fff;
+      border: 1px solid #d8e1e5;
+      color: var(--ink);
+      font-weight: 800;
+      font-size: 1rem;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .packing-check.done {
+      background: #daf0e1;
+      border-color: #a6d5b4;
+      color: #1f6f3d;
+    }
+
+    .packing-check input {
+      width: 18px;
+      height: 18px;
+      min-height: 18px;
+      accent-color: var(--ok);
+    }
+
+    .item-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(190px, auto);
+      gap: 12px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      background: var(--soft-danger);
+    }
+
+    .item-card.partial { background: var(--soft-warn); }
+    .item-card.done { background: var(--soft-ok); }
+
+    .item-main {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .item-main strong {
+      font-size: 1rem;
+    }
+
+    .item-meta {
+      color: #52646f;
+      font-size: .9rem;
+      line-height: 1.35;
+    }
+
+    .check-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .piece-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #fff;
+      border: 1px solid #d8e1e5;
+      color: var(--ink);
+      font-weight: 800;
+      user-select: none;
+    }
+
+    .piece-check.done {
+      background: #daf0e1;
+      border-color: #a6d5b4;
+      color: #1f6f3d;
+    }
+
+    .piece-check input {
+      width: 18px;
+      height: 18px;
+      min-height: 18px;
+      accent-color: var(--ok);
+    }
+
+    .empty {
+      padding: 26px;
+      border: 1px dashed var(--line);
+      border-radius: 18px;
+      text-align: center;
+      background: #fffdfa;
+    }
+
+    .loading {
+      opacity: .65;
+      pointer-events: none;
+    }
+
+    @media (max-width: 920px) {
+      .hero,
+      .client-head {
+        grid-template-columns: 1fr;
+      }
+
+      .brand-logos {
+        justify-content: flex-start;
+      }
+
+      .hero-actions,
+      .actions {
+        justify-content: flex-start;
+      }
+
+      .filters,
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        padding: 12px;
+      }
+
+      .hero,
+      .card {
+        border-radius: 18px;
+        padding: 16px;
+      }
+
+      .filters,
+      .stats-grid,
+      .item-card,
+      .packing-row {
+        grid-template-columns: 1fr;
+      }
+
+      .check-grid {
+        justify-content: flex-start;
+      }
+
+      .packing-count {
+        width: fit-content;
+      }
+
+      .client-head {
+        padding: 14px;
+      }
+
+      .progress-wrap {
+        padding: 0 14px 14px;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .segmented .btn,
+      .client-head .btn,
+      .hero-actions .btn {
+        width: auto;
+      }
+
+      .brand-logo {
+        width: 70px;
+        height: 70px;
+        border-radius: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="brand-logos" aria-label="Logos del sistema">
+        <img class="brand-logo" src="img/logolama3.png" alt="Tortillas La Má">
+        <img class="brand-logo" src="img/logosusy.png" alt="La Cocina de Susy">
+      </div>
+      <div>
+        <span class="badge">Operacion diaria</span>
+        <h1>Cocina del día</h1>
+        <p class="muted" style="margin:12px 0 0;">Consulta cuántos litros cocinar por guisado, salsa o producto y marca cada preparación cuando ya quedó lista.</p>
+      </div>
+      <div class="hero-actions">
+        <button class="btn secondary" type="button" id="autoBtn" onclick="toggleAutoRefresh_()">Auto: off</button>
+        <button class="btn" type="button" onclick="cargarArmado_()">Actualizar</button>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div id="message" class="notice"></div>
+
+      <section class="card">
+        <div class="filters">
+          <label>Semana
+            <select id="semana" onchange="cargarArmado_()"></select>
+          </label>
+          <label>Día
+            <select id="dia" onchange="cargarArmado_()"></select>
+          </label>
+          <label>Cocina
+            <select id="cocina" onchange="cargarArmado_()"></select>
+          </label>
+          <label>Cliente
+            <select id="cliente" onchange="cargarArmado_()"></select>
+          </label>
+          <button class="btn secondary" type="button" onclick="resetFiltros_()">Limpiar filtros</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="stats-grid">
+          <div class="stat"><span>Preparaciones</span><strong id="statClientes">0</strong></div>
+          <div class="stat"><span>Pendientes</span><strong id="statPendientes">0</strong></div>
+          <div class="stat"><span>Cocinados</span><strong id="statCompletos">0</strong></div>
+          <div class="stat"><span>Litros</span><strong id="statPiezas">0 L</strong></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="toolbar">
+          <div>
+            <h2>Litros por cocinar</h2>
+            <p class="muted" id="periodoTexto">Cargando periodo...</p>
+          </div>
+          <div class="segmented">
+            <button class="btn small" type="button" data-filter="todos" onclick="setFiltroVista_('todos')">Todos</button>
+            <button class="btn secondary small" type="button" data-filter="pendientes" onclick="setFiltroVista_('pendientes')">Pendientes</button>
+            <button class="btn secondary small" type="button" data-filter="completos" onclick="setFiltroVista_('completos')">Completos</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="armadoList" class="client-list">
+        <div class="card empty">Cargando cocina...</div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwOh48dsgpGVhCUbs4250L7dMHbbAvvv1-rdLWHq9pK5xiMfhQmS1HaRR2t2BZ0xblfOg/exec";
+
+    let armadoData = [];
+    let viewFilter = "pendientes";
+    let filterOptions = { clientes: [], cocinas: [], dias: [] };
+    let autoRefresh = false;
+    let autoTimer = null;
+    let loading = false;
+    let savingCount = 0;
+
+    document.addEventListener("DOMContentLoaded", inicializar_);
+
+    function api_(payload) {
+      return fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload || {})
+      })
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if (!data.exito) throw new Error(data.message || "Error de API");
+        return data;
+      });
+    }
+
+    function inicializar_() {
+      setMensaje_("Cargando filtros y periodo vigente...", "warn");
+      Promise.all([
+        api_({ action: "getPanelFilters" }),
+        api_({ action: "obtenerSemanasDisponibles" }),
+        api_({ action: "getViewerPeriodoVigente" })
+      ])
+      .then(function(results){
+        filterOptions = {
+          clientes: results[0].clientes || [],
+          cocinas: results[0].cocinas || [],
+          dias: results[0].dias || []
+        };
+        renderSelectOptions_("semana", results[1].semanas || [], results[2].semana || "");
+        renderSelectOptions_("dia", filterOptions.dias, results[2].dia || "");
+        renderSelectOptions_("cocina", filterOptions.cocinas, "");
+        renderSelectOptions_("cliente", filterOptions.clientes, "");
+        setMensaje_("", "");
+        cargarArmado_();
+      })
+      .catch(function(err){
+        setMensaje_("No se pudo inicializar Cocina: " + getErrorMessage_(err), "error");
+        renderEmpty_("No se pudo cargar la página de cocina.");
+      });
+    }
+
+    function renderSelectOptions_(id, options, selected) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const includeAll = id !== "semana";
+      let html = includeAll ? "<option value=''>Todo</option>" : "";
+      (options || []).forEach(function(option){
+        const value = String(option || "");
+        html += "<option value=\"" + escapeAttr_(value) + "\"" + (norm_(value) === norm_(selected) ? " selected" : "") + ">" + escapeHtml_(value) + "</option>";
+      });
+      el.innerHTML = html || "<option value=''>Sin opciones</option>";
+      if (selected && Array.from(el.options).every(function(opt){ return norm_(opt.value) !== norm_(selected); })) {
+        const opt = document.createElement("option");
+        opt.value = selected;
+        opt.textContent = selected;
+        opt.selected = true;
+        el.insertBefore(opt, el.firstChild);
+      }
+    }
+
+    function getFiltros_() {
+      return {
+        semana: valueOf_("semana"),
+        dia: valueOf_("dia"),
+        cocina: valueOf_("cocina"),
+        cliente: valueOf_("cliente")
+      };
+    }
+
+    function cargarArmado_() {
+      if (loading) return;
+      const filtros = getFiltros_();
+      if (!filtros.semana) {
+        setMensaje_("Selecciona una semana para cargar cocina.", "warn");
+        return;
+      }
+      loading = true;
+      document.body.classList.add("loading");
+      setMensaje_("Actualizando cocina...", "warn");
+      api_({
+        action: "obtenerArmadoPedidos",
+        semana: filtros.semana,
+        filtros: filtros
+      })
+      .then(function(data){
+        armadoData = Array.isArray(data.pedidos) ? data.pedidos : [];
+        setMensaje_("Cocina actualizada.", "ok", 1600);
+        renderArmado_();
+      })
+      .catch(function(err){
+        setMensaje_("No se pudo cargar cocina: " + getErrorMessage_(err), "error");
+      })
+      .finally(function(){
+        loading = false;
+        document.body.classList.remove("loading");
+      });
+    }
+
+    function renderArmado_() {
+      const list = document.getElementById("armadoList");
+      const data = Array.isArray(armadoData) ? armadoData : [];
+      const grupos = buildProductoGroups_(data);
+      const totals = getTotals_(grupos);
+      document.getElementById("statClientes").textContent = totals.productos;
+      document.getElementById("statPendientes").textContent = totals.pendientes;
+      document.getElementById("statCompletos").textContent = totals.completos;
+      document.getElementById("statPiezas").textContent = formatLitros_(totals.litros);
+      document.getElementById("periodoTexto").textContent = buildPeriodoTexto_();
+      updateFilterButtons_();
+
+      const filtered = filtrarProductos_(grupos);
+      if (!filtered.length) {
+        renderEmpty_(data.length ? "No hay preparaciones que coincidan con el filtro seleccionado." : "No hay litros por cocinar con los filtros seleccionados.");
+        return;
+      }
+
+      list.innerHTML = renderResumenPresentaciones_(grupos) + renderEmpaqueProductos_(filtered);
+    }
+
+    function buildProductoGroups_(data) {
+      const map = {};
+      (data || []).forEach(function(cliente, clientIdx){
+        (cliente.items || []).forEach(function(item, itemIdx){
+          const detalleVisible = cleanProductoDetalle_(item.detalle || "");
+          const key = [
+            norm_(item.producto || "Sin producto"),
+            norm_(detalleVisible || "Sin detalle")
+          ].join("|");
+          const presentacion = item.presentacion || "Sin presentacion";
+          const unidades = Number(item.unitCount || 0);
+          const litrosUnitarios = getLitrosPorPresentacion_(presentacion);
+          const litros = roundLitros_(unidades * litrosUnitarios);
+          if (!map[key]) {
+            map[key] = {
+              key: key,
+              producto: item.producto || "Sin producto",
+              detalle: detalleVisible || "Sin detalle",
+              presentaciones: {},
+              items: [],
+              totalUnidades: 0,
+              totalLitros: 0,
+              unitRefs: []
+            };
+          }
+          if (!map[key].presentaciones[presentacion]) {
+            map[key].presentaciones[presentacion] = {
+              presentacion: presentacion,
+              unidades: 0,
+              litros: 0
+            };
+          }
+          map[key].presentaciones[presentacion].unidades += unidades;
+          map[key].presentaciones[presentacion].litros = roundLitros_(map[key].presentaciones[presentacion].litros + litros);
+          map[key].items.push({
+            cliente: cliente.cliente,
+            clientIdx: clientIdx,
+            itemIdx: itemIdx,
+            item: item
+          });
+          map[key].totalUnidades += unidades;
+          map[key].totalLitros = roundLitros_(map[key].totalLitros + litros);
+          (Array.isArray(item.unitChecks) ? item.unitChecks : []).forEach(function(check){
+            map[key].unitRefs.push({
+              cliente: cliente.cliente,
+              clientIdx: clientIdx,
+              itemIdx: itemIdx,
+              pedidoId: item.idPedido,
+              unitIndex: Number(check.index || 0),
+              empacado: !!check.empacado
+            });
+          });
+        });
+      });
+
+      return Object.keys(map).map(function(key){
+        const group = map[key];
+        group.presentaciones = Object.keys(group.presentaciones || {}).map(function(pKey){
+          return group.presentaciones[pKey];
+        }).sort(function(a, b){
+          return String(a.presentacion || "").localeCompare(String(b.presentacion || ""), "es");
+        });
+        group.cooked = isCocinaGroupDone_(group);
+        group.fullyPacked = group.cooked;
+        return group;
+      }).sort(function(a, b){
+        const aPending = a.cooked ? 0 : 1;
+        const bPending = b.cooked ? 0 : 1;
+        if (aPending !== bPending) return bPending - aPending;
+        return String(a.producto || "").localeCompare(String(b.producto || ""), "es")
+          || String(a.detalle || "").localeCompare(String(b.detalle || ""), "es");
+      }).map(function(group, idx){
+        group.groupIndex = idx;
+        group.unitRefs = (group.unitRefs || []).sort(function(a, b){
+          return String(a.cliente || "").localeCompare(String(b.cliente || ""), "es")
+            || String(a.pedidoId || "").localeCompare(String(b.pedidoId || ""), "es")
+            || Number(a.unitIndex || 0) - Number(b.unitIndex || 0);
+        }).map(function(unit, unitIdx){
+          unit.unitPosition = unitIdx;
+          return unit;
+        });
+        return group;
+      });
+    }
+
+    function cleanProductoDetalle_(detalle) {
+      let value = String(detalle || "").trim();
+      if (!value) return "";
+      value = value.replace(/\s*\|\s*Obs:.*$/i, "");
+      value = value.replace(/\s*Obs:.*$/i, "");
+      value = value.replace(/\s*\|\s*Folio carrito.*$/i, "");
+      return value.trim();
+    }
+
+    function buildPresentacionTotals_(groups) {
+      const map = {};
+      (groups || []).forEach(function(group){
+        (group.presentaciones || []).forEach(function(row){
+          const key = [
+            group.producto || "Sin producto",
+            row.presentacion || "Sin presentacion"
+          ].join("|");
+          if (!map[key]) {
+            map[key] = {
+              producto: group.producto || "Sin producto",
+              presentacion: row.presentacion || "Sin presentacion",
+              unidades: 0,
+              litros: 0
+            };
+          }
+          map[key].unidades += Number(row.unidades || 0);
+          map[key].litros = roundLitros_(map[key].litros + Number(row.litros || 0));
+        });
+      });
+
+      return Object.keys(map).map(function(key){ return map[key]; }).sort(function(a, b){
+        return String(a.producto || "").localeCompare(String(b.producto || ""), "es")
+          || String(a.presentacion || "").localeCompare(String(b.presentacion || ""), "es");
+      });
+    }
+
+    function renderResumenPresentaciones_(groups) {
+      const totals = buildPresentacionTotals_(groups);
+      if (!totals.length) return "";
+      const cocina = getFiltros_().cocina || "Todas las cocinas";
+      const rows = totals.map(function(row){
+        return ""
+          + "<div class='summary-item'>"
+          + "<span>" + escapeHtml_([row.producto, row.presentacion].filter(Boolean).join(" ")) + "</span>"
+          + "<strong>" + formatLitros_(row.litros) + "</strong>"
+          + "</div>";
+      }).join("");
+      return ""
+        + "<section class='summary-panel'>"
+        + "<div>"
+        + "<h3>Plan de producción - " + escapeHtml_(cocina) + "</h3>"
+        + "<p class='muted' style='margin:6px 0 0;'>" + escapeHtml_(buildPeriodoTexto_()) + "</p>"
+        + "</div>"
+        + "<h3>Totales por presentación</h3>"
+        + "<div class='summary-list'>" + rows + "</div>"
+        + "</section>";
+    }
+
+    function renderEmpaqueProductos_(groups) {
+      const rows = (groups || []).map(renderProductoRow_).join("");
+      return ""
+        + "<section class='summary-panel'>"
+        + "<h3>Cocina por guisado / salsa</h3>"
+        + "<div class='packing-list'>" + rows + "</div>"
+        + "</section>";
+    }
+
+    function renderProductoRow_(group) {
+      const total = Number(group.totalUnidades || 0);
+      const litros = Number(group.totalLitros || 0);
+      const complete = !!group.cooked;
+      const rowClass = complete ? "done" : "";
+      const nombre = [
+        group.producto || "Sin producto",
+        group.detalle && group.detalle !== "Sin detalle" ? group.detalle : ""
+      ].filter(Boolean).join(" - ");
+      const detalle = buildPresentacionesTexto_(group);
+      const estado = complete ? "Cocinado" : "Pendiente";
+
+      return ""
+        + "<div class='packing-row " + rowClass + "'>"
+        + "<div class='packing-name'>"
+        + "<strong>" + escapeHtml_(nombre) + "</strong>"
+        + "<span class='item-meta'>" + escapeHtml_(detalle + " | " + estado) + "</span>"
+        + "</div>"
+        + "<div class='packing-count'>" + formatLitros_(litros) + "</div>"
+        + "<label class='packing-check " + (complete ? "done" : "") + "'>"
+        + "<input type='checkbox' " + (complete ? "checked" : "") + " onchange='setCocinaProductoCheck_(" + Number(group.groupIndex || 0) + ", this.checked)'>"
+        + "Cocinado"
+        + "</label>"
+        + "</div>";
+    }
+
+    function setCocinaProductoCheck_(groupIdx, checked) {
+      const group = buildProductoGroups_(armadoData)[groupIdx];
+      if (!group || !Array.isArray(group.items) || !group.items.length) {
+        setMensaje_("No se encontró información de la preparación.", "error");
+        return;
+      }
+      setCocinaGroupDone_(group, checked);
+      renderArmado_();
+      setMensaje_(checked ? "Preparación marcada como cocinada." : "Preparación reabierta.", "ok", 1400);
+    }
+
+    function buildPresentacionesTexto_(group) {
+      const rows = group && Array.isArray(group.presentaciones) ? group.presentaciones : [];
+      if (!rows.length) return Number(group.totalUnidades || 0) + " piezas";
+      return rows.map(function(row){
+        return row.presentacion + ": " + Number(row.unidades || 0) + " pzas";
+      }).join(" · ");
+    }
+
+    function getCocinaStorageKey_(group) {
+      const filtros = getFiltros_();
+      return [
+        "panel_cocina",
+        filtros.semana || "",
+        filtros.dia || "",
+        filtros.cocina || "",
+        filtros.cliente || "",
+        norm_(group && group.producto || ""),
+        norm_(group && group.detalle || "")
+      ].join("|");
+    }
+
+    function isCocinaGroupDone_(group) {
+      try {
+        return localStorage.getItem(getCocinaStorageKey_(group)) === "1";
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function setCocinaGroupDone_(group, checked) {
+      try {
+        const key = getCocinaStorageKey_(group);
+        if (checked) localStorage.setItem(key, "1");
+        else localStorage.removeItem(key);
+      } catch (err) {
+        setMensaje_("No se pudo guardar el avance local de cocina.", "error");
+      }
+    }
+
+    function getLitrosPorPresentacion_(presentacion) {
+      const text = norm_(presentacion);
+      if (!text) return 0;
+
+      const fraction = text.match(/(\d+)\s*\/\s*(\d+)\s*(?:l|litro|litros)/);
+      if (fraction) {
+        const top = Number(fraction[1] || 0);
+        const bottom = Number(fraction[2] || 0);
+        return bottom ? top / bottom : 0;
+      }
+
+      const litros = text.match(/(\d+(?:[\.,]\d+)?)\s*(?:l|litro|litros)\b/);
+      if (litros) return Number(String(litros[1]).replace(",", ".")) || 0;
+
+      const ml = text.match(/(\d+(?:[\.,]\d+)?)\s*ml\b/);
+      if (ml) return (Number(String(ml[1]).replace(",", ".")) || 0) / 1000;
+
+      const oz = text.match(/(\d+(?:[\.,]\d+)?)\s*oz\b/);
+      if (oz) return (Number(String(oz[1]).replace(",", ".")) || 0) * 0.0295735;
+
+      return 0;
+    }
+
+    function roundLitros_(value) {
+      return Math.round((Number(value || 0) + Number.EPSILON) * 1000) / 1000;
+    }
+
+    function formatLitros_(value) {
+      const litros = roundLitros_(value);
+      return litros.toLocaleString("es-MX", {
+        minimumFractionDigits: litros % 1 ? 2 : 0,
+        maximumFractionDigits: 2
+      }) + " L";
+    }
+
+    function recalcArmadoItem_(item) {
+      if (!item) return;
+      const checks = Array.isArray(item.unitChecks) ? item.unitChecks : [];
+      item.unitCount = checks.length || Number(item.unitCount || 0);
+      item.packedCount = checks.reduce(function(total, check){ return total + (check.empacado ? 1 : 0); }, 0);
+      item.fullyPacked = Number(item.unitCount || 0) > 0 && Number(item.packedCount || 0) >= Number(item.unitCount || 0);
+    }
+
+    function recalcArmadoCliente_(cliente) {
+      if (!cliente) return;
+      const items = Array.isArray(cliente.items) ? cliente.items : [];
+      cliente.totalUnidades = items.reduce(function(total, item){ return total + Number(item.unitCount || 0); }, 0);
+      cliente.totalEmpacadas = items.reduce(function(total, item){ return total + Number(item.packedCount || 0); }, 0);
+      cliente.fullyPacked = Number(cliente.totalUnidades || 0) > 0 && Number(cliente.totalEmpacadas || 0) >= Number(cliente.totalUnidades || 0);
+    }
+
+    function applyArmadoCheckLocal_(clientIdx, itemIdx, unitIndex, checked) {
+      const cliente = armadoData[clientIdx];
+      const item = cliente && cliente.items ? cliente.items[itemIdx] : null;
+      if (!item || !Array.isArray(item.unitChecks)) return;
+      item.unitChecks.forEach(function(check){
+        if (Number(check.index || 0) === Number(unitIndex || 0)) check.empacado = !!checked;
+      });
+      recalcArmadoItem_(item);
+      recalcArmadoCliente_(cliente);
+      renderArmado_();
+    }
+
+    function applyArmadoItemLocal_(clientIdx, itemIdx, checked, skipRender) {
+      const cliente = armadoData[clientIdx];
+      const item = cliente && cliente.items ? cliente.items[itemIdx] : null;
+      if (!item || !Array.isArray(item.unitChecks)) return;
+      item.unitChecks.forEach(function(check){ check.empacado = !!checked; });
+      recalcArmadoItem_(item);
+      recalcArmadoCliente_(cliente);
+      if (!skipRender) renderArmado_();
+    }
+
+    function actualizarArmado_(payload) {
+      savingCount++;
+      setMensaje_(savingCount > 1 ? ("Guardando " + savingCount + " cambios...") : "Guardando avance...", "warn");
+      api_(payload)
+      .then(function(data){
+        if (Array.isArray(data.pedidos)) {
+          armadoData = data.pedidos;
+          renderArmado_();
+        }
+        setMensaje_("Avance guardado.", "ok", 1400);
+      })
+      .catch(function(err){
+        setMensaje_("No se pudo guardar: " + getErrorMessage_(err), "error");
+        cargarArmado_();
+      })
+      .finally(function(){
+        savingCount = Math.max(0, savingCount - 1);
+      });
+    }
+
+    function actualizarArmadoBatch_(payloads) {
+      const items = Array.isArray(payloads) ? payloads.filter(Boolean) : [];
+      if (!items.length) {
+        setMensaje_("No hubo piezas para actualizar.", "warn", 1600);
+        return;
+      }
+      savingCount += items.length;
+      setMensaje_("Guardando avance del producto...", "warn");
+      Promise.all(items.map(function(payload){ return api_(payload); }))
+      .then(function(){
+        setMensaje_("Avance guardado.", "ok", 1400);
+      })
+      .catch(function(err){
+        setMensaje_("No se pudo guardar todo el producto: " + getErrorMessage_(err), "error");
+        cargarArmado_();
+      })
+      .finally(function(){
+        savingCount = Math.max(0, savingCount - items.length);
+      });
+    }
+
+    function getPedidoPayload_(clientIdx, itemIdx) {
+      const cliente = armadoData[clientIdx];
+      const item = cliente && cliente.items ? cliente.items[itemIdx] : null;
+      if (!cliente || !item) {
+        setMensaje_("No se encontró el pedido para actualizar.", "error");
+        return null;
+      }
+      return { cliente: cliente.cliente, item: item };
+    }
+
+    function filtrarProductos_(groups) {
+      return (groups || []).filter(function(group){
+        if (viewFilter === "pendientes") return !group.cooked;
+        if (viewFilter === "completos") return !!group.cooked;
+        return true;
+      });
+    }
+
+    function getTotals_(groups) {
+      const productos = groups.length;
+      const completos = groups.filter(function(c){
+        return !!c.cooked;
+      }).length;
+      const pendientes = groups.filter(function(c){
+        return !c.cooked;
+      }).length;
+      const litros = groups.reduce(function(total, c){ return total + Number(c.totalLitros || 0); }, 0);
+      return { productos: productos, completos: completos, pendientes: pendientes, litros: litros };
+    }
+
+    function setFiltroVista_(filter) {
+      viewFilter = filter || "todos";
+      renderArmado_();
+    }
+
+    function updateFilterButtons_() {
+      document.querySelectorAll("[data-filter]").forEach(function(btn){
+        const active = btn.getAttribute("data-filter") === viewFilter;
+        btn.className = active ? "btn small" : "btn secondary small";
+      });
+    }
+
+    function resetFiltros_() {
+      ["dia", "cocina", "cliente"].forEach(function(id){
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+      cargarArmado_();
+    }
+
+    function toggleAutoRefresh_() {
+      autoRefresh = !autoRefresh;
+      const btn = document.getElementById("autoBtn");
+      btn.textContent = autoRefresh ? "Auto: on" : "Auto: off";
+      btn.className = autoRefresh ? "btn" : "btn secondary";
+      if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+      if (autoRefresh) {
+        autoTimer = setInterval(function(){
+          if (!loading && !savingCount) cargarArmado_();
+        }, 30000);
+      }
+    }
+
+    function renderEmpty_(message) {
+      const list = document.getElementById("armadoList");
+      list.innerHTML = "<div class='card empty'>" + escapeHtml_(message || "Sin datos.") + "</div>";
+    }
+
+    function buildPeriodoTexto_() {
+      const filtros = getFiltros_();
+      const parts = [
+        filtros.semana ? ("Semana " + filtros.semana) : "",
+        filtros.dia ? ("Día " + filtros.dia) : "Todos los días",
+        filtros.cocina ? ("Cocina " + filtros.cocina) : "Todas las cocinas",
+        filtros.cliente ? ("Cliente " + filtros.cliente) : ""
+      ].filter(Boolean);
+      return parts.join(" · ");
+    }
+
+    function setMensaje_(message, type, timeout) {
+      const el = document.getElementById("message");
+      if (!el) return;
+      if (!message) {
+        el.className = "notice";
+        el.textContent = "";
+        return;
+      }
+      el.className = "notice show " + (type || "warn");
+      el.textContent = message;
+      if (timeout) {
+        setTimeout(function(){
+          if (el.textContent === message) setMensaje_("", "");
+        }, timeout);
+      }
+    }
+
+    function valueOf_(id) {
+      const el = document.getElementById(id);
+      return el ? String(el.value || "").trim() : "";
+    }
+
+    function getErrorMessage_(err) {
+      return err && err.message ? err.message : String(err || "Error desconocido");
+    }
+
+    function norm_(value) {
+      return String(value || "").trim().toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function escapeHtml_(value) {
+      return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttr_(value) {
+      return escapeHtml_(value).replace(/`/g, "&#096;");
+    }
+  </script>
+</body>
+</html>
